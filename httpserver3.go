@@ -96,7 +96,7 @@ func put(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = kv.Lease
+				node["ttl"] = 0 // TODO: clientv3.0 not support
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
@@ -126,7 +126,7 @@ func get(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = kv.Lease/int64(time.Millisecond)
+				node["ttl"] = 0 // TODO: clientv3.0 not support
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				nodes := pnode["nodes"].([]map[string]interface{})
@@ -140,7 +140,7 @@ func get(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = kv.Lease/int64(time.Millisecond)
+				node["ttl"] = 0 // TODO: clientv3.0 not support
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
