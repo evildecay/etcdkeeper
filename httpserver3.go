@@ -11,7 +11,6 @@ import(
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"encoding/json"
-	"fmt"
 )
 
 var cli *clientv3.Client
@@ -24,7 +23,7 @@ func main() {
 	http.HandleFunc("/connect", connect)
 	http.HandleFunc("/put", put)
 	http.HandleFunc("/get", get)
-	http.HandleFunc("/delete", delete)
+	http.HandleFunc("/delete", del)
 
 	wd, err := os.Getwd()
 	if err != nil{
@@ -32,7 +31,7 @@ func main() {
 	}
 	http.Handle("/", http.FileServer(http.Dir(wd))) // view static directory
 
-	fmt.Printf("listening on %s:%d\n", *host, *port)
+	log.Printf("listening on %s:%d\n", *host, *port)
 	err = http.ListenAndServe(*host + ":" + strconv.Itoa(*port), nil)
 	if err != nil {
 		log.Fatal(err)
@@ -47,7 +46,7 @@ func connect(w http.ResponseWriter, r *http.Request){
 			return
 		}else {
 			if err := cli.Close();err != nil {
-				fmt.Println(err.Error())
+				log.Println(err.Error())
 			}
 		}
 	}
@@ -68,7 +67,7 @@ func put(w http.ResponseWriter, r *http.Request){
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	ttl := r.FormValue("ttl")
-	fmt.Println("PUT", key)
+	log.Println("PUT", key)
 
 	var err error
 	data := make(map[string]interface{})
@@ -76,7 +75,7 @@ func put(w http.ResponseWriter, r *http.Request){
 		var sec int64
 		sec, err = strconv.ParseInt(ttl, 10, 64)
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 		}
 		var leaseResp *clientv3.LeaseGrantResponse
 		leaseResp, err = cli.Grant(context.TODO(), sec)
@@ -113,7 +112,7 @@ func put(w http.ResponseWriter, r *http.Request){
 func get(w http.ResponseWriter, r *http.Request){
 	key := r.FormValue("key")
 	data := make(map[string]interface{})
-	fmt.Println("GET", key)
+	log.Println("GET", key)
 	if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
 		data["errorCode"] = err.Error()
 	}else {
@@ -157,9 +156,9 @@ func get(w http.ResponseWriter, r *http.Request){
 	io.WriteString(w, string(dataByte))
 }
 
-func delete(w http.ResponseWriter, r *http.Request){
+func del(w http.ResponseWriter, r *http.Request){
 	key := r.FormValue("key")
-	fmt.Println("DELETE", key)
+	log.Println("DELETE", key)
 	if _, err := cli.Delete(context.Background(), key);err != nil {
 		io.WriteString(w, err.Error())
 	}else {
