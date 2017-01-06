@@ -119,6 +119,8 @@
 				success: function(data) {
 					if (data == "ok") {
 						alertMessage("Connect etcd success.");
+					}else if (data == "running") {
+						
 					}else {
 						$.messager.alert('Error', data, 'error');
 						status = "error"

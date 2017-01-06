@@ -43,7 +43,7 @@ func connect(w http.ResponseWriter, r *http.Request){
 	if cli != nil {
 		etcdHost := cli.Endpoints()[0]
 		if r.FormValue("host") == etcdHost {
-			io.WriteString(w, "ok")
+			io.WriteString(w, "running")
 			return
 		}else {
 			if err := cli.Close();err != nil {
