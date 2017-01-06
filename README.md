@@ -16,7 +16,7 @@
 * Open your browser and enter the address. http://127.0.0.1:8080/etcdkeeper3
 
 ## Special Note
-Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3
+Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3)
 
 ## Screenshots
 ![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/ui.png)
