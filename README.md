@@ -5,9 +5,9 @@
 * Based easyui framework to achieve.(easyui license [easyui website](www.jeasyui.com))
 
 ## Usage
-* Run httpserver.exe  
+* Run httpserver3.exe  
 ```
-  Usage of httpserver.exe:  
+  Usage of httpserver3.exe:  
   -h string  
         host name or ip address (default "127.0.0.1", your machine addreess, not etcd address)
   -p int
