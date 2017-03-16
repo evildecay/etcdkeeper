@@ -14,6 +14,10 @@
         port (default 8080)
 ```
 * Open your browser and enter the address. http://127.0.0.1:8080/etcdkeeper3
+* Right click on the tree node to add or delete
+
+## Recently want to achieve the new features
+* Content edits use the editor. [Ace editor](https://ace.c9.io)
 
 ## Special Note
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3)
