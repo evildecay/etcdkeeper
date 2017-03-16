@@ -15,6 +15,7 @@
 ```
 * Open your browser and enter the address. http://127.0.0.1:8080/etcdkeeper3
 * Right click on the tree node to add or delete
+* Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect
 
 ## Recently want to achieve the new features
 * Content edits use the editor. [Ace editor](https://ace.c9.io)
