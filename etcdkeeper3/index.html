@@ -13,6 +13,16 @@
 	<script type="text/javascript" src="framework/easyui/easyui-lang-zh_CN.js"></script>
 	<script type="text/javascript" src="framework/jquery/jquery.json-2.2.js"></script>
 	<script type="text/javascript" src="framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="framework/ace/ace.js" charset="utf-8"></script>
+	<style>
+		#value {
+			position: absolute;
+			width: 97%;
+			height: 473px;
+			border:1px solid #ddd;
+			font-size: 13px!important;
+		}
+	</style>
 </head>
 <body>
 	<h2>ETCD Keeper v3</h2>
@@ -26,7 +36,8 @@
 		</div>
 		<div data-options="region:'center',tools:'#centerTools',footer:'#footer'" title="/" spellcheck="false" style="padding:10px;overflow:hidden;">
 			<!--pre style="height:100%;max-height:100%;overflow:auto;margin-top:0;" contentEditable=true></pre-->
-			<textarea id="value" class="easyui-textbox" name="value" data-options="multiline:true" style="width:100%;min-height:100%;"></textarea>
+			<!--textarea id="value" class="easyui-textbox" name="value" data-options="multiline:true" style="width:100%;min-height:100%;"></textarea-->
+			<div id="value"></div>
 		</div>
 	</div>
 	
@@ -35,6 +46,7 @@
 		<a href="javascript:void(0)" class="icon-reload" onclick="connect();"></a>
 	</div>
 	<div id="centerTools">
+		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
 		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();"></a>
 	</div>
 	<div id="treeDirMenu" class="easyui-menu" style="width:150px;">
@@ -78,13 +90,28 @@
 	    </div>
 	</div>
 	
+	<div id="modeMenu" style="">
+		<div id="mode_text" onclick="changeMode('text')">text</div>
+		<div id="mode_toml" onclick="changeMode('toml')">toml</div>
+		<div id="mode_ini" onclick="changeMode('ini')">ini</div>
+		<div id="mode_yaml" onclick="changeMode('yaml')">yaml</div>
+		<div id="mode_xml" onclick="changeMode('xml')">xml</div>
+		<div id="mode_lua" onclick="changeMode('lua')">lua</div>
+		<div id="mode_javascript" onclick="changeMode('javascript')">javascript</div>
+	</div>
+	
 	<script>
 		var serverBase = "http://127.0.0.1:8080";
 		var etcdBase = "127.0.0.1:2379";
 		var tree = [];
 		var idCount = 0;
+		var editor = ace.edit("value");
+		var currentMode = "mode_icon_text"
 		
 		$(document).ready(function() {
+			editor.setTheme("ace/theme/github");
+			editor.getSession().setMode("ace/mode/toml");
+			$("#mode_text").append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
 			init();
 		});
 		
@@ -158,16 +185,16 @@
 		
 		function resetValue() {
 			$("#elayout").layout('panel','center').panel('setTitle', "/");
-			$("#value").textbox('setValue','');
-			$("#value").textbox('disable','none');
+			editor.getSession().setValue("");
+			editor.setReadOnly(true);
 			$('#footer').html('&nbsp;');
 		}
 		
 		function showNode(node) {
 			$("#elayout").layout('panel','center').panel('setTitle', node.path);
-			$('#value').textbox('setValue', "");
+			editor.getSession().setValue("");
 			if (node.dir == false) {
-				$("#value").textbox('enable','none');
+				editor.setReadOnly(false);
 				$.ajax({
 					type: "GET",
 					timeout: 5000,
@@ -180,7 +207,7 @@
 							$('#etree').tree('remove', node.target);
 							resetValue()
 						}else {
-							$('#value').textbox('setValue', data.node.value);
+							editor.getSession().setValue(data.node.value);
 							var ttl = 0;
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
@@ -196,7 +223,7 @@
 				if (node.children.length > 0) {
 					$('#etree').tree(node.state === 'closed' ? 'expand' : 'collapse', node.target);
 				}
-				$("#value").textbox('disable','none');
+				editor.setReadOnly(true);
 				$('#footer').html("&nbsp;");
 				
 				// clear child node
@@ -283,11 +310,11 @@
 					type: "PUT",
 					timeout: 5000,
 					url:  serverBase + "/put",
-					data: {"key": node.path, "value":$('#value').textbox().val()},
+					data: {"key": node.path, "value":editor.getValue()},
 					async: true,
 					dataType: "json",
 					success: function(data) {
-						$('#value').textbox('setValue', data.node.value);
+						editor.getSession().setValue(data.node.value);
 						var ttl = 0;
 						if (data.node.ttl) {
 							ttl = data.node.ttl;
@@ -420,6 +447,14 @@
 		
 		function getId() {
 			return idCount++;
+		}
+		
+		function changeMode(mode) {
+			$("#" + currentMode).remove();
+			editor.getSession().setMode("ace/mode/" + mode);
+			currentMode = "mode_icon_" + mode
+			$("#mode_" + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			// <div class="menu-icon icon-ok"></div>
 		}
 	</script>
 </body>
