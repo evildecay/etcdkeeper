@@ -5,7 +5,8 @@
 * Based easyui framework to achieve.(easyui license [easyui website](www.jeasyui.com))
 
 ## Usage
-* Run httpserver3.exe  
+* Run httpserver3.exe
+* If linux or darwin,Please compile it in its environment
 ```
   Usage of httpserver3.exe:  
   -h string  
@@ -17,8 +18,9 @@
 * Right click on the tree node to add or delete
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect
 
-## Recently want to achieve the new features
-* Content edits use the editor. [Ace editor](https://ace.c9.io)
+## Features
+* Etcd v3 client view. Add, update or delete nodes.
+* Content edits use the editor. Support toml,ini,yaml,json,xml and so on to highlight view. [Ace editor](https://ace.c9.io)
 
 ## Special Note
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3)
