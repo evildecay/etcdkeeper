@@ -110,7 +110,7 @@
 		
 		$(document).ready(function() {
 			editor.setTheme("ace/theme/github");
-			editor.getSession().setMode("ace/mode/toml");
+			editor.getSession().setMode("ace/mode/text");
 			$("#mode_text").append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
 			init();
 		});
@@ -454,7 +454,6 @@
 			editor.getSession().setMode("ace/mode/" + mode);
 			currentMode = "mode_icon_" + mode
 			$("#mode_" + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
-			// <div class="menu-icon icon-ok"></div>
 		}
 	</script>
 </body>
