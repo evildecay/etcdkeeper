@@ -20,7 +20,7 @@
 
 ## Features
 * Etcd v3 client view. Add, update or delete nodes.
-* Content edits use the ace editor[Ace editor](https://ace.c9.io). Support toml,ini,yaml,json,xml and so on to highlight view.
+* Content edits use the ace editor[(Ace editor)](https://ace.c9.io). Support toml,ini,yaml,json,xml and so on to highlight view.
 
 ## Special Note
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3)
