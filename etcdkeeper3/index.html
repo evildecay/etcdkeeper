@@ -101,23 +101,23 @@
 	</div>
 	
 	<script>
-		var serverBase = "http://127.0.0.1:8080";
-		var etcdBase = "127.0.0.1:2379";
+		var serverBase = 'http://127.0.0.1:8080';
+		var etcdBase = '127.0.0.1:2379';
 		var tree = [];
 		var idCount = 0;
-		var editor = ace.edit("value");
-		var currentMode = "mode_icon_text"
+		var editor = ace.edit('value');
+		var currentMode = 'mode_icon_text';
 		
 		$(document).ready(function() {
-			editor.setTheme("ace/theme/github");
-			editor.getSession().setMode("ace/mode/text");
-			$("#mode_text").append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			editor.setTheme('ace/theme/github');
+			editor.getSession().setMode('ace/mode/text');
+			$('#mode_text').append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
 			init();
 		});
 		
 		function init() {
-			$("#etcdAddr").textbox('setValue', etcdBase);
-			var t = $("#etree").tree({
+			$('#etcdAddr').textbox('setValue', etcdBase);
+			var t = $('#etree').tree({
 				animate:true,
 				onClick:showNode,
 				//lines:true,
@@ -126,7 +126,7 @@
 		}
 		
 		function changeHost(newValue, oldValue) {
-			if (newValue == "") {
+			if (newValue == '') {
 				$.messager.alert('Error','ETCD address is empty.','error');
 			}else {
 				etcdBase = newValue;
@@ -135,22 +135,22 @@
 		}
 		
 		function connect() {
-			var status = "ok"
+			var status = 'ok'
 			$.ajax({
-				type: "POST",
+				type: 'POST',
 				timeout: 5000,
-				url:  serverBase + "/connect",
-				data: {"host": etcdBase},
+				url:  serverBase + '/connect',
+				data: {'host': etcdBase},
 				async: false,
-				dataType: "text",
+				dataType: 'text',
 				success: function(data) {
-					if (data == "ok") {
-						alertMessage("Connect etcd success.");
-					}else if (data == "running") {
+					if (data == 'ok') {
+						alertMessage('Connect etcd success.');
+					}else if (data == 'running') {
 						
 					}else {
 						$.messager.alert('Error', data, 'error');
-						status = "error"
+						status = 'error'
 					}
 				},
 				error: function(err) {
@@ -158,11 +158,11 @@
 				}
 			});
 			
-			if (status == "ok") {
+			if (status == 'ok') {
 				reload();
 			}else {
 				resetValue();
-				$("#etree").tree("loadData", []);
+				$('#etree').tree('loadData', []);
 			}
 		}
 		
@@ -171,37 +171,37 @@
 				id      : getId(),
 				children: [],
 				dir     : true,
-				path    : "/",
-				text    : "/",
-				iconCls : "icon-dir"
+				path    : '/',
+				text    : '/',
+				iconCls : 'icon-dir'
 			};
 			
 			tree = []
 			tree.push(rootNode)
-			$("#etree").tree("loadData", tree);
-			showNode($("#etree").tree("getRoot"));
+			$('#etree').tree('loadData', tree);
+			showNode($('#etree').tree('getRoot'));
 			resetValue();
 		}
 		
 		function resetValue() {
-			$("#elayout").layout('panel','center').panel('setTitle', "/");
-			editor.getSession().setValue("");
+			$('#elayout').layout('panel','center').panel('setTitle', '/');
+			editor.getSession().setValue('');
 			editor.setReadOnly(true);
 			$('#footer').html('&nbsp;');
 		}
 		
 		function showNode(node) {
-			$("#elayout").layout('panel','center').panel('setTitle', node.path);
-			editor.getSession().setValue("");
+			$('#elayout').layout('panel','center').panel('setTitle', node.path);
+			editor.getSession().setValue('');
 			if (node.dir == false) {
 				editor.setReadOnly(false);
 				$.ajax({
-					type: "GET",
+					type: 'GET',
 					timeout: 5000,
-					url:  serverBase + "/get",
-					data: {"key": node.path},
+					url:  serverBase + '/get',
+					data: {'key': node.path},
 					async: true,
-					dataType: "json",
+					dataType: 'json',
 					success: function(data) {
 						if (data.errorCode) {
 							$('#etree').tree('remove', node.target);
@@ -212,7 +212,7 @@
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
 							}
-							$('#footer').html("TTL&nbsp;:&nbsp;" + ttl + "&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;" + data.node.createdIndex + "&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;" + data.node.modifiedIndex);							
+							$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);							
 						} 
 					},
 					error: function(err) {
@@ -224,18 +224,18 @@
 					$('#etree').tree(node.state === 'closed' ? 'expand' : 'collapse', node.target);
 				}
 				editor.setReadOnly(true);
-				$('#footer').html("&nbsp;");
+				$('#footer').html('&nbsp;');
 				
 				// clear child node
 				var children = $('#etree').tree('getChildren', node.target)
 				if (node.state == 'closed' || children.length == 0) {
 					$.ajax({
-						type: "GET",
+						type: 'GET',
 						timeout: 5000,
-						url:  serverBase + "/get",
-						data: {"key": node.path, "prefix": "true"},
+						url:  serverBase + '/get',
+						data: {'key': node.path, 'prefix': 'true'},
 						async: true,
-						dataType: "json",
+						dataType: 'json',
 						success: function(data) {
 							if (data.errorCode) {
 								return
@@ -272,14 +272,14 @@
 				id  :    getId(),
 				text:    n.key,
 				dir:     false,
-				iconCls: "icon-text",
+				iconCls: 'icon-text',
 				path:    n.key,
 				children:[]
 			};
 			if (n.dir == true) {
 				obj.state = 'closed';
 				obj.dir = true;
-				obj.iconCls = "icon-dir";
+				obj.iconCls = 'icon-dir';
 				if (n.nodes) {
 					for (var i in n.nodes) {
 						var rn = getNode(n.nodes[i]);
@@ -295,7 +295,7 @@
 			$('#etree').tree('select',node.target);
 			var mid = "treeNodeMenu";
 			if (node.dir == true) {
-				mid = "treeDirMenu";
+				mid = 'treeDirMenu';
 			}
 			$('#' + mid).menu('show',{
 				left: e.pageX,
@@ -309,17 +309,17 @@
 				$.ajax({
 					type: "PUT",
 					timeout: 5000,
-					url:  serverBase + "/put",
-					data: {"key": node.path, "value":editor.getValue()},
+					url:  serverBase + '/put',
+					data: {'key': node.path, 'value':editor.getValue()},
 					async: true,
-					dataType: "json",
+					dataType: 'json',
 					success: function(data) {
 						editor.getSession().setValue(data.node.value);
 						var ttl = 0;
 						if (data.node.ttl) {
 							ttl = data.node.ttl;
 						}
-						$('#footer').html("TTL&nbsp;:&nbsp;" + ttl + "&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;" + data.node.createdIndex + "&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;" + data.node.modifiedIndex);
+						$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);
 						alertMessage('Save success.');
 					},
 					error: function(err) {
@@ -332,21 +332,21 @@
 		function createNode() {
 			var node = $('#etree').tree('getSelected');
 			var nodePath = node.path;
-			if (nodePath == "/") {
-				nodePath = ""
+			if (nodePath == '/') {
+				nodePath = ''
 			}
-			if ($("#cnodeForm").form('validate')) {
+			if ($('#cnodeForm').form('validate')) {
 				var createNodePath = $('#name').textbox('getValue');
-				if (!createNodePath.startsWith("/")) {
-					createNodePath= "/" + $('#name').textbox('getValue');
+				if (!createNodePath.startsWith('/')) {
+					createNodePath= '/' + $('#name').textbox('getValue');
 				}
 				$.ajax({
-					type: "PUT",
+					type: 'PUT',
 					timeout: 5000,
-					url:  serverBase + "/put",
-					data: {"key":createNodePath,"value":$('#cvalue').textbox().val(),"ttl":$('#ttl').numberbox().val()},
+					url:  serverBase + '/put',
+					data: {'key':createNodePath,'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
 					async: true,
-					dataType: "text",
+					dataType: 'text',
 					success: function(data) {
 						$('#cnode').window('close');
 						var ret = $.evalJSON(data);
@@ -360,7 +360,7 @@
 										text:    createNodePath,
 										state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
 										dir:     $('#dir').combobox('getValue') == 'true'?true:false,
-										iconCls: $('#dir').combobox('getValue') == 'true'?"icon-dir":"icon-text",
+										iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
 										path:    createNodePath,
 										children:[]
 									};
@@ -375,8 +375,8 @@
 							}
 							
 						}
-						$("#cvalue").textbox('enable','none');
-						$("#cnodeForm").form('reset');
+						$('#cvalue').textbox('enable','none');
+						$('#cnodeForm').form('reset');
 						$('#ttl').numberbox('setValue', '');
 					},
 					error: function(err) {
@@ -401,15 +401,15 @@
 			$.messager.confirm('Confirm', 'Remove ' + node.text + '?', function(r){
 				if (r){
 					$.ajax({
-						type: "POST",
+						type: 'POST',
 						timeout: 5000,
-						url:  serverBase + "/delete",
-						data: {"key": node.path},
+						url:  serverBase + '/delete',
+						data: {'key': node.path},
 						async: true,
-						dataType: "text",
+						dataType: 'text',
 						success: function(data) {
 							resetValue();
-							if (data == "ok") {
+							if (data == 'ok') {
 								alertMessage('Delete success.');
 								$('#etree').tree('remove', node.target);
 							}else {
@@ -425,10 +425,10 @@
 		}
 		
 		function selDir(item) {
-			if (item.value == "true") {
-				$("#cvalue").textbox('disable','none');
+			if (item.value == 'true') {
+				$('#cvalue').textbox('disable','none');
 			}else {
-				$("#cvalue").textbox('enable','none');
+				$('#cvalue').textbox('enable','none');
 			}
 		}
 		
@@ -450,10 +450,10 @@
 		}
 		
 		function changeMode(mode) {
-			$("#" + currentMode).remove();
-			editor.getSession().setMode("ace/mode/" + mode);
-			currentMode = "mode_icon_" + mode
-			$("#mode_" + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			$('#' + currentMode).remove();
+			editor.getSession().setMode('ace/mode/' + mode);
+			currentMode = 'mode_icon_' + mode
+			$('#mode_' + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
 		}
 	</script>
 </body>
