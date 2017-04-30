@@ -6,7 +6,7 @@
 
 ## Usage
 * Run httpserver3.exe
-* If linux or darwin,Please compile it in its environment
+* If linux or darwin,Please compile it in its environment.
 ```
   Usage of httpserver3.exe:  
   -h string  
