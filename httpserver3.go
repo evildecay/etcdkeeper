@@ -16,7 +16,7 @@ import(
 var cli *clientv3.Client
 
 func main() {
-	host := flag.String("h","127.0.0.1","host name or ip address")
+	host := flag.String("h","0.0.0.0","host name or ip address")
 	port := flag.Int("p", 8080, "port")
 	flag.CommandLine.Parse(os.Args[1:])
 
@@ -101,12 +101,13 @@ func put(w http.ResponseWriter, r *http.Request){
 				data["node"] = node
 			}
 		}
+		var dataByte []byte
+		if dataByte, err = json.Marshal(data);err != nil {
+			io.WriteString(w, err.Error())
+		} else {
+			io.WriteString(w, string(dataByte))
+		}
 	}
-	var dataByte []byte
-	if dataByte, err = json.Marshal(data);err != nil {
-		io.WriteString(w, err.Error())
-	}
-	io.WriteString(w, string(dataByte))
 }
 
 func get(w http.ResponseWriter, r *http.Request){
@@ -152,8 +153,9 @@ func get(w http.ResponseWriter, r *http.Request){
 	var err error
 	if dataByte, err = json.Marshal(data);err != nil {
 		io.WriteString(w, err.Error())
+	} else {
+		io.WriteString(w, string(dataByte))
 	}
-	io.WriteString(w, string(dataByte))
 }
 
 func del(w http.ResponseWriter, r *http.Request){
