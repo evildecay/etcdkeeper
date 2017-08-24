@@ -18,8 +18,10 @@
 	<style>
 		#value {
 			position: absolute;
-			width: 97.2%;
-			height: 473px;
+			top: 40px;
+			right: 15px;
+			bottom: 40px;
+			left: 15px;
 			border:1px solid #ddd;
 			font-size: 13px!important;
 		}
@@ -31,7 +33,7 @@
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
-	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
+	<div id="elayout" class="easyui-layout" style="width:100%;height:110%;">
 		<div id="p" data-options="region:'west',tools:'#westTools'" title="Nodes" style="width:30%;padding:10px">
 			<ul id="etree" class="easyui-tree"></ul>
 		</div>
@@ -111,20 +113,24 @@
 		var editor = ace.edit('value');
 		var curIconMode = 'mode_icon_text';
 		var aceMode = Cookies.get('ace-mode');
+		var autoFormat = Cookies.get('auto-format');
 		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
 			editor.getSession().setMode('ace/mode/' + aceMode);
-			$('#mode_text').append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
+			changeMode(aceMode);
 			init();
 		});
 		
 		function init() {
-		    if(typeof(etcdBase) === "undefined") {
-		        etcdBase = "127.0.0.1:2379";
+			if(typeof(etcdBase) === "undefined") {
+				etcdBase = "127.0.0.1:2379";
 			}
 			if(typeof(aceMode) === 'undefined') {
-		        aceMode = 'text';
+				aceMode = 'text';
+			}
+			if(typeof(autoFormat) === 'undefined') {
+				autoFormat = 'false';
 			}
 			$('#etcdAddr').textbox('setValue', etcdBase);
 			var t = $('#etree').tree({
@@ -156,10 +162,10 @@
 				dataType: 'text',
 				success: function(data) {
 					if (data === 'ok') {
-					    console.log('Connect etcd success.');
+						console.log('Connect etcd success.');
 						//alertMessage('Connect etcd success.');
 					}else if (data === 'running') {
-                        console.log('etcd is running.');
+						console.log('etcd is running.');
 					}else {
 						$.messager.alert('Error', data, 'error');
 						status = 'error'
@@ -219,6 +225,9 @@
 							resetValue()
 						}else {
 							editor.getSession().setValue(data.node.value);
+							if (autoFormat === 'true') {
+								format(aceMode);
+							}
 							var ttl = 0;
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
@@ -460,8 +469,8 @@
 		}
 		
 		function changeMode(mode) {
-		    aceMode = mode;
-		    Cookies.set('ace-mode', aceMode);
+			aceMode = mode;
+			Cookies.set('ace-mode', aceMode);
 			$('#' + curIconMode).remove();
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			curIconMode = 'mode_icon_' + aceMode;
@@ -473,8 +482,10 @@
 				val = JSON.parse(editor.getValue());
 				editor.setValue(JSON.stringify(val, null, 4));
 				editor.getSession().setMode('ace/mode/' + 'json');
+				editor.clearSelection();
+				editor.navigateFileStart();
 			}
-        }
+		}
 	</script>
 </body>
 </html>
