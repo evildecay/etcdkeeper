@@ -13,12 +13,15 @@
 	<script type="text/javascript" src="framework/easyui/easyui-lang-zh_CN.js"></script>
 	<script type="text/javascript" src="framework/jquery/jquery.json-2.2.js"></script>
 	<script type="text/javascript" src="framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="framework/js.cookie-2.1.4.min.js"></script>
 	<script type="text/javascript" src="framework/ace/ace.js" charset="utf-8"></script>
 	<style>
 		#value {
 			position: absolute;
-			width: 97.2%;
-			height: 473px;
+			top: 40px;
+			right: 15px;
+			bottom: 40px;
+			left: 15px;
 			border:1px solid #ddd;
 			font-size: 13px!important;
 		}
@@ -30,7 +33,7 @@
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
-	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
+	<div id="elayout" class="easyui-layout" style="width:100%;height:110%;">
 		<div id="p" data-options="region:'west',tools:'#westTools'" title="Nodes" style="width:30%;padding:10px">
 			<ul id="etree" class="easyui-tree"></ul>
 		</div>
@@ -47,6 +50,7 @@
 	</div>
 	<div id="centerTools">
 		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
+		<a href="javascript:void(0)" class="icon-text" onclick="format(aceMode);"></a>
 		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();"></a>
 	</div>
 	<div id="treeDirMenu" class="easyui-menu" style="width:150px;">
@@ -98,24 +102,36 @@
 		<div id="mode_xml" onclick="changeMode('xml')">xml</div>
 		<div id="mode_lua" onclick="changeMode('lua')">lua</div>
 		<div id="mode_javascript" onclick="changeMode('javascript')">javascript</div>
+		<div id="mode_json" onclick="changeMode('json')">json</div>
 	</div>
 	
 	<script>
 		var serverBase = '';
-		var etcdBase = '127.0.0.1:2379';
+		var etcdBase = Cookies.get("etcd-endpoint");
 		var tree = [];
 		var idCount = 0;
 		var editor = ace.edit('value');
-		var currentMode = 'mode_icon_text';
+		var curIconMode = 'mode_icon_text';
+		var aceMode = Cookies.get('ace-mode');
+		var autoFormat = Cookies.get('auto-format');
 		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
-			editor.getSession().setMode('ace/mode/text');
-			$('#mode_text').append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			editor.getSession().setMode('ace/mode/' + aceMode);
+			changeMode(aceMode);
 			init();
 		});
 		
 		function init() {
+			if(typeof(etcdBase) === "undefined") {
+				etcdBase = "127.0.0.1:2379";
+			}
+			if(typeof(aceMode) === 'undefined') {
+				aceMode = 'text';
+			}
+			if(typeof(autoFormat) === 'undefined') {
+				autoFormat = 'false';
+			}
 			$('#etcdAddr').textbox('setValue', etcdBase);
 			var t = $('#etree').tree({
 				animate:true,
@@ -126,16 +142,17 @@
 		}
 		
 		function changeHost(newValue, oldValue) {
-			if (newValue == '') {
+			if (newValue === '') {
 				$.messager.alert('Error','ETCD address is empty.','error');
 			}else {
+				Cookies.set('etcd-endpoint', newValue);
 				etcdBase = newValue;
 				connect();
 			}
 		}
 		
 		function connect() {
-			var status = 'ok'
+			var status = 'ok';
 			$.ajax({
 				type: 'POST',
 				timeout: 5000,
@@ -144,10 +161,11 @@
 				async: false,
 				dataType: 'text',
 				success: function(data) {
-					if (data == 'ok') {
-						alertMessage('Connect etcd success.');
-					}else if (data == 'running') {
-						
+					if (data === 'ok') {
+						console.log('Connect etcd success.');
+						//alertMessage('Connect etcd success.');
+					}else if (data === 'running') {
+						console.log('etcd is running.');
 					}else {
 						$.messager.alert('Error', data, 'error');
 						status = 'error'
@@ -158,7 +176,7 @@
 				}
 			});
 			
-			if (status == 'ok') {
+			if (status === 'ok') {
 				reload();
 			}else {
 				resetValue();
@@ -175,9 +193,8 @@
 				text    : '/',
 				iconCls : 'icon-dir'
 			};
-			
-			tree = []
-			tree.push(rootNode)
+			tree = [];
+			tree.push(rootNode);
 			$('#etree').tree('loadData', tree);
 			showNode($('#etree').tree('getRoot'));
 			resetValue();
@@ -193,7 +210,7 @@
 		function showNode(node) {
 			$('#elayout').layout('panel','center').panel('setTitle', node.path);
 			editor.getSession().setValue('');
-			if (node.dir == false) {
+			if (node.dir === false) {
 				editor.setReadOnly(false);
 				$.ajax({
 					type: 'GET',
@@ -208,6 +225,9 @@
 							resetValue()
 						}else {
 							editor.getSession().setValue(data.node.value);
+							if (autoFormat === 'true') {
+								format(aceMode);
+							}
 							var ttl = 0;
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
@@ -227,8 +247,8 @@
 				$('#footer').html('&nbsp;');
 				
 				// clear child node
-				var children = $('#etree').tree('getChildren', node.target)
-				if (node.state == 'closed' || children.length == 0) {
+				var children = $('#etree').tree('getChildren', node.target);
+				if (node.state === 'closed' || children.length === 0) {
 					$.ajax({
 						type: 'GET',
 						timeout: 5000,
@@ -238,7 +258,6 @@
 						dataType: 'json',
 						success: function(data) {
 							if (data.errorCode) {
-								return
 							}else {
 								var arr = [];
 								
@@ -276,7 +295,7 @@
 				path:    n.key,
 				children:[]
 			};
-			if (n.dir == true) {
+			if (n.dir === true) {
 				obj.state = 'closed';
 				obj.dir = true;
 				obj.iconCls = 'icon-dir';
@@ -294,7 +313,7 @@
 			e.preventDefault();
 			$('#etree').tree('select',node.target);
 			var mid = "treeNodeMenu";
-			if (node.dir == true) {
+			if (node.dir === true) {
 				mid = 'treeDirMenu';
 			}
 			$('#' + mid).menu('show',{
@@ -332,7 +351,7 @@
 		function createNode() {
 			var node = $('#etree').tree('getSelected');
 			var nodePath = node.path;
-			if (nodePath == '/') {
+			if (nodePath === '/') {
 				nodePath = ''
 			}
 			if ($('#cnodeForm').form('validate')) {
@@ -358,14 +377,14 @@
 							var obj = {
 										id  :    getId(),
 										text:    createNodePath,
-										state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
-										dir:     $('#dir').combobox('getValue') == 'true'?true:false,
-										iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
+										state:   $('#dir').combobox('getValue') === 'true'?'closed':'',
+										dir:     $('#dir').combobox('getValue') === 'true',
+										iconCls: $('#dir').combobox('getValue') === 'true'?'icon-dir':'icon-text',
 										path:    createNodePath,
 										children:[]
 									};
-							var objNode = nodeExist(obj.path)
-							if (objNode == null) {
+							var objNode = nodeExist(obj.path);
+							if (objNode === null) {
 								newData.push(obj);
 							
 								$('#etree').tree('append', {
@@ -389,7 +408,7 @@
 		function nodeExist(p) {
 			for (var i=0;i<=idCount;i++) {
 				var node = $('#etree').tree('find', i);
-				if (node != null && node.path == p) {
+				if (node !== null && node.path === p) {
 					return node;
 				}
 			}
@@ -409,7 +428,7 @@
 						dataType: 'text',
 						success: function(data) {
 							resetValue();
-							if (data == 'ok') {
+							if (data === 'ok') {
 								alertMessage('Delete success.');
 								$('#etree').tree('remove', node.target);
 							}else {
@@ -425,7 +444,7 @@
 		}
 		
 		function selDir(item) {
-			if (item.value == 'true') {
+			if (item.value === 'true') {
 				$('#cvalue').textbox('disable','none');
 			}else {
 				$('#cvalue').textbox('enable','none');
@@ -450,10 +469,22 @@
 		}
 		
 		function changeMode(mode) {
-			$('#' + currentMode).remove();
-			editor.getSession().setMode('ace/mode/' + mode);
-			currentMode = 'mode_icon_' + mode
-			$('#mode_' + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			aceMode = mode;
+			Cookies.set('ace-mode', aceMode);
+			$('#' + curIconMode).remove();
+			editor.getSession().setMode('ace/mode/' + aceMode);
+			curIconMode = 'mode_icon_' + aceMode;
+			$('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
+		}
+
+		function format(type) {
+			if (type === 'json') {
+				val = JSON.parse(editor.getValue());
+				editor.setValue(JSON.stringify(val, null, 4));
+				editor.getSession().setMode('ace/mode/' + 'json');
+				editor.clearSelection();
+				editor.navigateFileStart();
+			}
 		}
 	</script>
 </body>
