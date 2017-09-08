@@ -2,7 +2,7 @@
 * Lightweight etcd web client.
 * Support etcd 3.x.
 * Server using the grpc interface, the server needs to compile the package etcd clientv3.
-* Based easyui framework to achieve(easyui license [easyui website](www.jeasyui.com)).
+* Based easyui framework to achieve(easyui license [easyui website](http://www.jeasyui.com)).
 
 ## Usage
 * Run httpserver3.exe
