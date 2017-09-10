@@ -3,18 +3,18 @@
 <head>
 	<meta charset="UTF-8">
 	<title>ETCD Keeper v3</title>
-	<link rel="stylesheet" type="text/css" href="framework/easyui/themes/metro/easyui.css">
-	<link rel="stylesheet" type="text/css" href="framework/easyui/themes/icon.css">
-	<link rel="stylesheet" type="text/css" href="framework/custom/css/style.css">
+	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/metro/easyui.css">
+	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/icon.css">
+	<link rel="stylesheet" type="text/css" href="../framework/custom/css/style.css">
 	<!-- 此行代码解决ie8中iframe里嵌套此页面会导致jquery错误-->
 	<script>document.documentElement.focus();</script>
-	<script type="text/javascript" src="framework/easyui/jquery.min.js"></script>
-	<script type="text/javascript" src="framework/easyui/jquery.easyui.min.js"></script>
-	<script type="text/javascript" src="framework/easyui/easyui-lang-zh_CN.js"></script>
-	<script type="text/javascript" src="framework/jquery/jquery.json-2.2.js"></script>
-	<script type="text/javascript" src="framework/custom/js/common.js"></script>
-	<script type="text/javascript" src="framework/js.cookie-2.1.4.min.js"></script>
-	<script type="text/javascript" src="framework/ace/ace.js" charset="utf-8"></script>
+	<script type="text/javascript" src="../framework/easyui/jquery.min.js"></script>
+	<script type="text/javascript" src="../framework/easyui/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="../framework/easyui/easyui-lang-zh_CN.js"></script>
+	<script type="text/javascript" src="../framework/jquery/jquery.json-2.2.js"></script>
+	<script type="text/javascript" src="../framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="../framework/js.cookie-2.1.4.min.js"></script>
+	<script type="text/javascript" src="../framework/ace/ace.js" charset="utf-8"></script>
 	<style>
 		#value {
 			position: absolute;
@@ -33,25 +33,23 @@
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
-	<div id="elayout" class="easyui-layout" style="width:100%;height:110%;">
+	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
 		<div id="p" data-options="region:'west',tools:'#westTools'" title="Nodes" style="width:30%;padding:10px">
 			<ul id="etree" class="easyui-tree"></ul>
 		</div>
 		<div data-options="region:'center',tools:'#centerTools',footer:'#footer'" title="/" spellcheck="false" style="padding:10px;overflow:hidden;">
-			<!--pre style="height:100%;max-height:100%;overflow:auto;margin-top:0;" contentEditable=true></pre-->
-			<!--textarea id="value" class="easyui-textbox" name="value" data-options="multiline:true" style="width:100%;min-height:100%;"></textarea-->
 			<div id="value"></div>
 		</div>
 	</div>
 	
 	<div id="footer" style="padding:5px;color:#777;">&nbsp;</div>
 	<div id="westTools">
-		<a href="javascript:void(0)" class="icon-reload" onclick="connect();"></a>
+		<a href="javascript:void(0)" class="icon-reload" onclick="connect();" title="Refresh tree"></a>
 	</div>
 	<div id="centerTools">
 		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
-		<a href="javascript:void(0)" class="icon-text" onclick="format(aceMode);"></a>
-		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();"></a>
+		<a href="javascript:void(0)" class="icon-text" style="margin-right:4px;" onclick="format(aceMode);" title="Format content"></a>
+		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();" title="Save content"></a>
 	</div>
 	<div id="treeDirMenu" class="easyui-menu" style="width:150px;">
 		<div onclick="$('#cnode').window('open')" data-options="iconCls:'icon-add'">Create Node</div>
