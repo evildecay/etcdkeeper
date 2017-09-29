@@ -6,7 +6,7 @@
 
 ## Usage
 * Run httpserver.exe (windows version)
-* If linux or darwin,Please compile it in its environment. Or to publish the page to download the corresponding version of the platform.
+* If linux or darwin,Please compile it in its environment. Or to publish the page to download the release version of the platform.
 ```
   Usage of httpserver.exe:  
   -h string  
