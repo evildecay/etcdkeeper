@@ -37,7 +37,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println(http.Dir(wd + "/assets"))
+	//log.Println(http.Dir(wd + "/assets"))
 
 	http.Handle("/", http.FileServer(http.Dir(wd + "/assets"))) // view static directory
 
