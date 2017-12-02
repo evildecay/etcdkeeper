@@ -6,7 +6,7 @@
 
 ## Usage
 * Run httpserver.exe (windows version)
-* If linux or darwin,Please compile it in its environment. Or to publish the page to download the corresponding version of the platform.
+* [Download other platform releases](https://github.com/evildecay/etcdkeeper/releases).
 ```
   Usage of httpserver.exe:  
   -h string  
@@ -23,7 +23,7 @@
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
 ## Features
-* Etcd client view. Add, update or delete nodes.
+* Etcd client view, Add, update or delete nodes.
 * Content edits use the ace editor[(Ace editor)](https://ace.c9.io). Support toml,ini,yaml,json,xml and so on to highlight view.
 * Content format. (Currently only support json, Other types can be extended later) Thanks jim3ma for his contribution.[@jim3ma]( https://github.com/jim3ma)
 
