@@ -15,7 +15,11 @@ import(
 	"golang.org/x/net/context"
 )
 
-var cli *clientv3.Client
+var (
+	cli *clientv3.Client
+	Separator = "/"
+)
+
 
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
@@ -31,6 +35,8 @@ func main() {
 	http.HandleFunc("/put", put)
 	http.HandleFunc("/get", get)
 	http.HandleFunc("/delete", del)
+	// dirctory mode
+	http.HandleFunc("/getpath", getPath)
 
 	wd, err := os.Getwd()
 	if err != nil{
@@ -198,13 +204,140 @@ func get(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+func getPath(w http.ResponseWriter, r *http.Request){
+	key := r.FormValue("key")
+	log.Println("GET", "v3", key)
+	var (
+		data = make(map[string]interface{})
+		/*
+			{1:["/"], 2:["/foo", "/foo2"], 3:["/foo/bar", "/foo2/bar"], 4:["/foo/bar/test"]}
+		 */
+		all = make(map[int][]map[string]interface{})
+		min int
+		max int
+		prefixKey string
+	)
+	// parent
+	presp, err := cli.Get(context.Background(), key)
+	if err != nil {
+		data["errorCode"] = err.Error()
+		if dataByte, err := json.Marshal(data);err != nil {
+			io.WriteString(w, err.Error())
+		} else {
+			io.WriteString(w, string(dataByte))
+		}
+		return
+	}
+	if key == Separator {
+		min = 1
+		prefixKey = Separator
+	} else {
+		min = len(strings.Split(key, Separator))
+		prefixKey = key + Separator
+	}
+	max = min
+	all[min] = []map[string]interface{}{{"key":key}}
+	if presp.Count != 0 {
+		all[min][0]["value"] = string(presp.Kvs[0].Value)
+	}
+	all[min][0]["nodes"] = make([]map[string]interface{}, 0)
+
+	//child
+	resp, err := cli.Get(context.Background(), prefixKey, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	if err != nil {
+		data["errorCode"] = err.Error()
+		if dataByte, err := json.Marshal(data);err != nil {
+			io.WriteString(w, err.Error())
+		} else {
+			io.WriteString(w, string(dataByte))
+		}
+		return
+	}
+
+	for _, v := range resp.Kvs {
+		if string(v.Key) == Separator {
+			continue
+		}
+		keys := strings.Split(string(v.Key), Separator) // /foo/bar
+		var begin bool
+		for i := range keys { // ["", "foo", "bar"]
+			k := strings.Join(keys[0:i+1], Separator)
+			if k == "" {
+				continue
+			}
+			if key == Separator {
+				begin = true
+			} else if k == key {
+				begin = true
+				continue
+			}
+			if begin {
+				node := map[string]interface{}{"key":k}
+				if node["key"].(string) == string(v.Key) {
+					node["value"] = string(v.Value)
+				}
+				level := len(strings.Split(k, Separator))
+				if level > max {
+					max = level
+				}
+
+				if _, ok := all[level];!ok {
+					all[level] = make([]map[string]interface{}, 0)
+				}
+				levelNodes := all[level]
+				var isExist bool
+				for _, n := range levelNodes {
+					if n["key"].(string) == k {
+						isExist = true
+					}
+				}
+				if !isExist {
+					node["nodes"] = make([]map[string]interface{}, 0)
+					all[level] = append(all[level], node)
+				}
+			}
+		}
+	}
+
+	// parent-child mapping
+	for i := max; i > min; i-- {
+		for _, a := range all[i] {
+			for _, pa := range all[i-1] {
+				if i == 2 {
+					pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
+					pa["dir"] = true
+				} else {
+					if strings.HasPrefix(a["key"].(string), pa["key"].(string) + Separator) {
+						pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
+						pa["dir"] = true
+					}
+				}
+			}
+		}
+	}
+	data = all[min][0]
+	if dataByte, err := json.Marshal(map[string]interface{}{"node":data});err != nil {
+		io.WriteString(w, err.Error())
+	} else {
+		io.WriteString(w, string(dataByte))
+	}
+}
+
 func del(w http.ResponseWriter, r *http.Request){
 	key := r.FormValue("key")
+	dir := r.FormValue("dir")
 	log.Println("DELETE", "v3", key)
 
 	if _, err := cli.Delete(context.Background(), key);err != nil {
 		io.WriteString(w, err.Error())
-	}else {
-		io.WriteString(w, "ok")
+		return
 	}
+
+	if dir == "true" {
+		if _, err := cli.Delete(context.Background(), key + "/", clientv3.WithPrefix());err != nil {
+			io.WriteString(w, err.Error())
+			return
+		}
+	}
+	io.WriteString(w, "ok")
 }

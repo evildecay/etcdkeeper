@@ -44,10 +44,11 @@
 	
 	<div id="footer" style="padding:5px;color:#777;">&nbsp;</div>
 	<div id="westTools">
+		<a href="javascript:void(0)" class="icon-path" style="margin-right:4px;" onclick="changeTreeMode();" title="Tree mode"></a>
 		<a href="javascript:void(0)" class="icon-reload" onclick="connect();" title="Refresh tree"></a>
 	</div>
 	<div id="centerTools">
-		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
+		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'"><span id="modename">text</span></a>
 		<a href="javascript:void(0)" class="icon-text" style="margin-right:4px;" onclick="format(aceMode);" title="Format content"></a>
 		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();" title="Save content"></a>
 	</div>
@@ -241,53 +242,70 @@
 				if (node.children.length > 0) {
 					$('#etree').tree(node.state === 'closed' ? 'expand' : 'collapse', node.target);
 				}
-				editor.setReadOnly(true);
+				//editor.setReadOnly(true);
 				$('#footer').html('&nbsp;');
-				
 				// clear child node
 				var children = $('#etree').tree('getChildren', node.target);
-				if (node.state === 'closed' || children.length === 0) {
-					$.ajax({
-						type: 'GET',
-						timeout: 5000,
-						url:  serverBase + '/get',
-						data: {'key': node.path, 'prefix': 'true'},
-						async: true,
-						dataType: 'json',
-						success: function(data) {
-							if (data.errorCode) {
-							}else {
-								var arr = [];
-								
-								if (data.node.nodes) {									
-									// refresh child node
-									for (var i in data.node.nodes) {
-										var newData = getNode(data.node.nodes[i]);	
-										arr.push(newData);
-									}
-									$('#etree').tree('append', {
-										parent: node.target,
-										data: arr
-									});
-								}
-								
-								for(var n in children) {
-									$('#etree').tree('remove', children[n].target);
-								}
-							} 
-						},
-						error: function(err) {
-							$.messager.alert('Error',$.toJSON(err),'error');
-						}
-					});
+				//if (node.state === 'closed' || children.length === 0) {
+					
+				//}
+				var url = '';
+				if (treeMode === 'list') {
+					url = serverBase + '/get';
+				} else {
+					url = serverBase + '/getpath';
 				}
+				$.ajax({
+					type: 'GET',
+					timeout: 5000,
+					url:  url,
+					data: {'key': node.path, 'prefix': 'true'},
+					async: true,
+					dataType: 'json',
+					success: function(data) {
+						if (data.errorCode) {
+							$.messager.alert('Error',data.errorCode,'error');
+						}else {
+							if (data.node.value) {
+								editor.getSession().setValue(data.node.value);
+							}
+							var arr = [];
+							
+							if (data.node.nodes) {									
+								// refresh child node
+								for (var i in data.node.nodes) {
+									var newData = getNode(data.node.nodes[i]);	
+									arr.push(newData);
+								}
+								$('#etree').tree('append', {
+									parent: node.target,
+									data: arr
+								});
+							}
+							
+							for(var n in children) {
+								$('#etree').tree('remove', children[n].target);
+							}
+						} 
+					},
+					error: function(err) {
+						$.messager.alert('Error',$.toJSON(err),'error');
+					}
+				});
 			}
 		}
 		
 		function getNode(n) {
+			var text = '';
+			if (treeMode === 'list') {
+				text = n.key;
+			} else {
+				var path = n.key.split('/');
+				text = path[path.length - 1];
+			}
 			var obj = {
 				id  :    getId(),
-				text:    n.key,
+				text:    text,
 				dir:     false,
 				iconCls: 'icon-text',
 				path:    n.key,
@@ -311,8 +329,12 @@
 			e.preventDefault();
 			$('#etree').tree('select',node.target);
 			var mid = "treeNodeMenu";
-			if (node.dir === true) {
+			if (treeMode === 'path') {
 				mid = 'treeDirMenu';
+			} else {
+				if (node.dir === true) {
+					mid = 'treeDirMenu';
+				}
 			}
 			$('#' + mid).menu('show',{
 				left: e.pageX,
@@ -322,28 +344,26 @@
 		
 		function saveValue() {
 			var node = $('#etree').tree('getSelected');
-			if (!node.dir) {
-				$.ajax({
-					type: "PUT",
-					timeout: 5000,
-					url:  serverBase + '/put',
-					data: {'key': node.path, 'value':editor.getValue()},
-					async: true,
-					dataType: 'json',
-					success: function(data) {
-						editor.getSession().setValue(data.node.value);
-						var ttl = 0;
-						if (data.node.ttl) {
-							ttl = data.node.ttl;
-						}
-						$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);
-						alertMessage('Save success.');
-					},
-					error: function(err) {
-						$.messager.alert('Error',$.toJSON(err),'error');
+			$.ajax({
+				type: "PUT",
+				timeout: 5000,
+				url:  serverBase + '/put',
+				data: {'key': node.path, 'value':editor.getValue()},
+				async: true,
+				dataType: 'json',
+				success: function(data) {
+					editor.getSession().setValue(data.node.value);
+					var ttl = 0;
+					if (data.node.ttl) {
+						ttl = data.node.ttl;
 					}
-				});
-			}
+					$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);
+					alertMessage('Save success.');
+				},
+				error: function(err) {
+					$.messager.alert('Error',$.toJSON(err),'error');
+				}
+			});
 		}
 		
 		function createNode() {
@@ -352,55 +372,143 @@
 			if (nodePath === '/') {
 				nodePath = ''
 			}
-			if ($('#cnodeForm').form('validate')) {
-				var createNodePath = $('#name').textbox('getValue');
-				if (!createNodePath.startsWith('/')) {
-					createNodePath= '/' + $('#name').textbox('getValue');
+			
+			if (treeMode == 'list') {
+				if ($('#cnodeForm').form('validate')) {
+					var createNodePath = $('#name').textbox('getValue');
+					if (!createNodePath.startsWith('/')) {
+						createNodePath= '/' + $('#name').textbox('getValue');
+					}
+					$.ajax({
+						type: 'PUT',
+						timeout: 5000,
+						url:  serverBase + '/put',
+						data: {'key':createNodePath,'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
+						async: true,
+						dataType: 'text',
+						success: function(data) {
+							$('#cnode').window('close');
+							var ret = $.evalJSON(data);
+							if (ret.errorCode) {
+								$.messager.alert('Error', ret.cause + " " + ret.message, 'error');
+							}else {
+								alertMessage('Create success.');
+								var newData = [];
+								var obj = {
+											id  :    getId(),
+											text:    createNodePath,
+											state:   $('#dir').combobox('getValue') === 'true'?'closed':'',
+											dir:     $('#dir').combobox('getValue') === 'true',
+											iconCls: $('#dir').combobox('getValue') === 'true'?'icon-dir':'icon-text',
+											path:    createNodePath,
+											children:[]
+										};
+								var objNode = nodeExist(obj.path);
+								if (objNode === null) {
+									newData.push(obj);
+								
+									$('#etree').tree('append', {
+										parent: node.target,
+										data: newData
+									});
+								}
+								
+							}
+							$('#cvalue').textbox('enable','none');
+							$('#cnodeForm').form('reset');
+							$('#ttl').numberbox('setValue', '');
+						},
+						error: function(err) {
+							$.messager.alert('Error', err, 'error');
+						}
+					});
 				}
-				$.ajax({
-					type: 'PUT',
-					timeout: 5000,
-					url:  serverBase + '/put',
-					data: {'key':createNodePath,'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
-					async: true,
-					dataType: 'text',
-					success: function(data) {
-						$('#cnode').window('close');
-						var ret = $.evalJSON(data);
-						if (ret.errorCode) {
-							$.messager.alert('Error', ret.cause + " " + ret.message, 'error');
-						}else {
-							alertMessage('Create success.');
-							var newData = [];
-							var obj = {
-										id  :    getId(),
-										text:    createNodePath,
-										state:   $('#dir').combobox('getValue') === 'true'?'closed':'',
-										dir:     $('#dir').combobox('getValue') === 'true',
-										iconCls: $('#dir').combobox('getValue') === 'true'?'icon-dir':'icon-text',
-										path:    createNodePath,
-										children:[]
-									};
-							var objNode = nodeExist(obj.path);
-							if (objNode === null) {
-								newData.push(obj);
-							
+			} else {
+				if ($('#cnodeForm').form('validate')) {
+					var pathArr = []
+					var inputArr = $('#name').textbox('getValue').split('/')
+					for (var i in inputArr) {
+						if ($.trim(inputArr[i]) != '') {
+							pathArr.push(inputArr[i])
+						}
+					}
+					
+					$.ajax({
+						type: 'PUT',
+						timeout: 5000,
+						url:  serverBase + '/put',
+						data: {'key':nodePath + '/' + pathArr.join('/'),'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
+						async: true,
+						dataType: 'text',
+						success: function(data) {
+							$('#cnode').window('close');
+							var ret = $.evalJSON(data);
+							if (ret.errorCode) {
+								$.messager.alert('Error', ret.cause + ' ' + ret.message, 'error');
+							}else {
+								alertMessage('Create success.');
+								var newData = [];
+								var preObj = {};
+								var prePath = node.path;
+								for (var k in pathArr) {
+									var obj = {};
+									if (k == pathArr.length - 1) {
+										obj = {
+											id  :    getId(),
+											text:    pathArr[k],
+											state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
+											dir:     $('#dir').combobox('getValue') == 'true'?true:false,
+											iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
+											path:    (prePath=='/'?(prePath + ''):(prePath + '/')) + pathArr[k],
+											children:[]
+										};
+									}else {
+										obj = {
+											id  :    getId(),
+											text:    pathArr[k],
+											state:   'closed',
+											dir:     true,
+											iconCls: 'icon-dir',
+											path:    (prePath=='/'?(prePath + ''):(prePath + '/')) + pathArr[k],
+											children:[]
+										};
+									}
+									var objNode = nodeExist(obj.path)
+									if (objNode != null) {
+										node = objNode;
+										prePath = node.path;
+										continue;
+									}
+									if (newData.length == 0) {
+										newData.push(obj);
+									}else {
+										preObj.children.push(obj);
+									}
+									preObj = obj;
+									prePath = obj.path;
+								}
+								
+								$('#etree').tree('update', {
+									target: node.target,
+									iconCls: 'icon-dir'
+								});
 								$('#etree').tree('append', {
 									parent: node.target,
 									data: newData
 								});
 							}
 							
+							$('#cvalue').textbox('enable','none');
+							$('#cnodeForm').form('reset');
+							$('#ttl').numberbox('setValue', '');
+						},
+						error: function(err) {
+							$.messager.alert('Error', err, 'error');
 						}
-						$('#cvalue').textbox('enable','none');
-						$('#cnodeForm').form('reset');
-						$('#ttl').numberbox('setValue', '');
-					},
-					error: function(err) {
-						$.messager.alert('Error', err, 'error');
-					}
-				});
+					});
+				}
 			}
+			
 		}
 		
 		function nodeExist(p) {
@@ -421,14 +529,24 @@
 						type: 'POST',
 						timeout: 5000,
 						url:  serverBase + '/delete',
-						data: {'key': node.path},
+						data: {'key': node.path, 'dir':node.dir},
 						async: true,
 						dataType: 'text',
 						success: function(data) {
 							resetValue();
 							if (data === 'ok') {
+								var pnode = $('#etree').tree('getParent', node.target);
+								
 								alertMessage('Delete success.');
 								$('#etree').tree('remove', node.target);
+								
+								var isLeaf = $('#etree').tree('isLeaf', pnode.target);
+								if (isLeaf) {
+									$('#etree').tree('update', {
+										target: pnode.target,
+										iconCls: 'icon-text'
+									});
+								}
 							}else {
 								$.messager.alert('Error', data, 'error');
 							}
@@ -473,6 +591,7 @@
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			curIconMode = 'mode_icon_' + aceMode;
 			$('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
+			$('#modename').html(mode)
 		}
 
 		function format(type) {
@@ -483,6 +602,16 @@
 				editor.clearSelection();
 				editor.navigateFileStart();
 			}
+		}
+		
+		var treeMode = 'list';
+		function changeTreeMode() {
+			if (treeMode === 'list') {
+				treeMode = 'path';
+			} else {
+				treeMode = 'list';
+			}
+			connect();
 		}
 	</script>
 </body>
