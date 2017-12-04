@@ -535,9 +535,10 @@
 						success: function(data) {
 							resetValue();
 							if (data === 'ok') {
+								alertMessage('Delete success.');
+								
 								var pnode = $('#etree').tree('getParent', node.target);
 								
-								alertMessage('Delete success.');
 								$('#etree').tree('remove', node.target);
 								
 								var isLeaf = $('#etree').tree('isLeaf', pnode.target);
