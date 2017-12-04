@@ -48,7 +48,7 @@
 		<a href="javascript:void(0)" class="icon-reload" onclick="connect();" title="Refresh tree"></a>
 	</div>
 	<div id="centerTools">
-		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'"><span id="modename">text</span></a>
+		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
 		<a href="javascript:void(0)" class="icon-text" style="margin-right:4px;" onclick="format(aceMode);" title="Format content"></a>
 		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();" title="Save content"></a>
 	</div>
@@ -113,6 +113,13 @@
 		var curIconMode = 'mode_icon_text';
 		var aceMode = Cookies.get('ace-mode');
 		var autoFormat = Cookies.get('auto-format');
+		if (typeof(aceMode) === 'undefined') {
+			aceMode = 'text';
+		}
+		var treeMode = Cookies.get('tree-mode');
+		if (typeof(treeMode) === 'undefined') {
+			treeMode = 'list';
+		}
 		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
@@ -122,7 +129,7 @@
 		});
 		
 		function init() {
-			if(typeof(etcdBase) === "undefined") {
+			if(typeof(etcdBase) === 'undefined') {
 				etcdBase = "127.0.0.1:2379";
 			}
 			if(typeof(aceMode) === 'undefined') {
@@ -345,7 +352,7 @@
 		function saveValue() {
 			var node = $('#etree').tree('getSelected');
 			$.ajax({
-				type: "PUT",
+				type: 'PUT',
 				timeout: 5000,
 				url:  serverBase + '/put',
 				data: {'key': node.path, 'value':editor.getValue()},
@@ -592,7 +599,6 @@
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			curIconMode = 'mode_icon_' + aceMode;
 			$('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
-			$('#modename').html(mode)
 		}
 
 		function format(type) {
@@ -605,13 +611,13 @@
 			}
 		}
 		
-		var treeMode = 'list';
 		function changeTreeMode() {
 			if (treeMode === 'list') {
 				treeMode = 'path';
 			} else {
 				treeMode = 'list';
 			}
+			Cookies.set('tree-mode', treeMode);
 			connect();
 		}
 	</script>
