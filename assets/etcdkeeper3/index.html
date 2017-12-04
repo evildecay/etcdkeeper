@@ -107,12 +107,14 @@
 	<script>
 		var serverBase = '';
 		var etcdBase = Cookies.get("etcd-endpoint");
+		if(typeof(etcdBase) === 'undefined') {
+			etcdBase = "127.0.0.1:2379";
+		}
 		var tree = [];
 		var idCount = 0;
 		var editor = ace.edit('value');
 		var curIconMode = 'mode_icon_text';
 		var aceMode = Cookies.get('ace-mode');
-		var autoFormat = Cookies.get('auto-format');
 		if (typeof(aceMode) === 'undefined') {
 			aceMode = 'text';
 		}
@@ -120,6 +122,10 @@
 		if (typeof(treeMode) === 'undefined') {
 			treeMode = 'list';
 		}
+		//var autoFormat = Cookies.get('auto-format');
+		//if(typeof(autoFormat) === 'undefined') {
+			//autoFormat = 'false';
+		//}
 		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
@@ -129,15 +135,6 @@
 		});
 		
 		function init() {
-			if(typeof(etcdBase) === 'undefined') {
-				etcdBase = "127.0.0.1:2379";
-			}
-			if(typeof(aceMode) === 'undefined') {
-				aceMode = 'text';
-			}
-			if(typeof(autoFormat) === 'undefined') {
-				autoFormat = 'false';
-			}
 			$('#etcdAddr').textbox('setValue', etcdBase);
 			var t = $('#etree').tree({
 				animate:true,
@@ -231,9 +228,9 @@
 							resetValue()
 						}else {
 							editor.getSession().setValue(data.node.value);
-							if (autoFormat === 'true') {
-								format(aceMode);
-							}
+							//if (autoFormat === 'true') {
+								//format(aceMode);
+							//}
 							var ttl = 0;
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
