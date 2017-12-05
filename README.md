@@ -28,7 +28,7 @@
 * Content format. (Currently only support json, Other types can be extended later) Thanks jim3ma for his contribution.[@jim3ma]( https://github.com/jim3ma)
 
 ## Future Features
-* Import and Export feature.
+* Import and export.
 * Content simple filter search.
 
 ## Special Note
