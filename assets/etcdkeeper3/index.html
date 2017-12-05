@@ -235,8 +235,8 @@
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
 							}
-							$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);							
-						} 
+							changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
+						}
 					},
 					error: function(err) {
 						$.messager.alert('Error',$.toJSON(err),'error');
@@ -272,6 +272,7 @@
 						}else {
 							if (data.node.value) {
 								editor.getSession().setValue(data.node.value);
+								changeFooter(data.node.ttl, data.node.createdIndex, data.node.modifiedIndex);
 							}
 							var arr = [];
 							
@@ -361,7 +362,7 @@
 					if (data.node.ttl) {
 						ttl = data.node.ttl;
 					}
-					$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);
+					changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
 					alertMessage('Save success.');
 				},
 				error: function(err) {
@@ -596,6 +597,11 @@
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			curIconMode = 'mode_icon_' + aceMode;
 			$('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
+			$('#showMode').html(aceMode);
+		}
+		
+		function changeFooter(ttl, cIndex, mIndex) {
+			$('#footer').html('<span>TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CreateRevision&nbsp;:&nbsp;' + cIndex + '&nbsp;&nbsp;&nbsp;&nbsp;ModRevision&nbsp;:&nbsp;' + mIndex + '</span><span id="showMode" style="position: absolute;right: 10px;color: #777;">' + aceMode + '</span>');
 		}
 
 		function format(type) {

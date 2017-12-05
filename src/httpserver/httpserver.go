@@ -140,7 +140,7 @@ func put(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = 0 // FIXME: clientv3.0 not support?
+				node["ttl"] = getTTL(kv.Lease)
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
@@ -172,7 +172,7 @@ func get(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = 0 // FIXME: clientv3.0 not support?
+				node["ttl"] = getTTL(kv.Lease)
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				nodes := pnode["nodes"].([]map[string]interface{})
@@ -186,7 +186,7 @@ func get(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = 0 // FIXME: clientv3.0 not support?
+				node["ttl"] = getTTL(kv.Lease)
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
@@ -239,6 +239,9 @@ func getPath(w http.ResponseWriter, r *http.Request){
 	all[min] = []map[string]interface{}{{"key":key}}
 	if presp.Count != 0 {
 		all[min][0]["value"] = string(presp.Kvs[0].Value)
+		all[min][0]["ttl"] = getTTL(presp.Kvs[0].Lease)
+		all[min][0]["createdIndex"] = presp.Kvs[0].CreateRevision
+		all[min][0]["modifiedIndex"] = presp.Kvs[0].ModRevision
 	}
 	all[min][0]["nodes"] = make([]map[string]interface{}, 0)
 
@@ -275,6 +278,9 @@ func getPath(w http.ResponseWriter, r *http.Request){
 				node := map[string]interface{}{"key":k}
 				if node["key"].(string) == string(v.Key) {
 					node["value"] = string(v.Value)
+					node["ttl"] = getTTL(v.Lease)
+					node["createdIndex"] = v.CreateRevision
+					node["modifiedIndex"] = v.ModRevision
 				}
 				level := len(strings.Split(k, Separator))
 				if level > max {
@@ -340,4 +346,15 @@ func del(w http.ResponseWriter, r *http.Request){
 		}
 	}
 	io.WriteString(w, "ok")
+}
+
+func getTTL(lease int64) int64 {
+	resp, err := cli.Lease.TimeToLive(context.Background(), clientv3.LeaseID(lease))
+	if err != nil {
+		return 0
+	}
+	if resp.TTL == -1 {
+		return 0
+	}
+	return resp.TTL
 }

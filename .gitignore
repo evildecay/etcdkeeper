@@ -1,0 +1,21 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.iml
+
+# Folders
+_obj
+_test
+.idea
+pkg
+bin
+*.tmp
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.exe
+*.class
+
+# Package Files
+*.war
+*.ear
