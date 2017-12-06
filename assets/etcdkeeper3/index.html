@@ -236,6 +236,7 @@
 								ttl = data.node.ttl;
 							}
 							changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
+							changeModeBySuffix(node.path);
 						}
 					},
 					error: function(err) {
@@ -273,6 +274,7 @@
 							if (data.node.value) {
 								editor.getSession().setValue(data.node.value);
 								changeFooter(data.node.ttl, data.node.createdIndex, data.node.modifiedIndex);
+								changeModeBySuffix(node.path);
 							}
 							var arr = [];
 							
@@ -622,6 +624,23 @@
 			}
 			Cookies.set('tree-mode', treeMode);
 			connect();
+		}
+		
+		function changeModeBySuffix(path) {
+			var a = path.split("/");
+			var tokens = a.slice(a.length-1,a.lenght)[0].split(".");
+			if (tokens.length < 2) {
+				return
+			}
+			var mode = tokens[tokens.length-1]
+			var modes = $("#modeMenu").children();
+			for (var i=0;i<modes.length;i++) {
+				m = modes[i].innerText;
+				if (mode === m) {
+					changeMode(m);
+					return
+				}
+			}
 		}
 	</script>
 </body>
