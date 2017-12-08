@@ -261,11 +261,11 @@ func getPath(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	for _, v := range resp.Kvs {
-		if string(v.Key) == Separator {
+	for _, kv := range resp.Kvs {
+		if string(kv.Key) == Separator {
 			continue
 		}
-		keys := strings.Split(string(v.Key), Separator) // /foo/bar
+		keys := strings.Split(string(kv.Key), Separator) // /foo/bar
 		var begin bool
 		for i := range keys { // ["", "foo", "bar"]
 			k := strings.Join(keys[0:i+1], Separator)
@@ -280,15 +280,15 @@ func getPath(w http.ResponseWriter, r *http.Request){
 			}
 			if begin {
 				node := map[string]interface{}{"key":k}
-				if node["key"].(string) == string(v.Key) {
-					node["value"] = string(v.Value)
-					if key == string(v.Key) {
-						node["ttl"] = getTTL(v.Lease)
+				if node["key"].(string) == string(kv.Key) {
+					node["value"] = string(kv.Value)
+					if key == string(kv.Key) {
+						node["ttl"] = getTTL(kv.Lease)
 					} else {
 						node["ttl"] = 0
 					}
-					node["createdIndex"] = v.CreateRevision
-					node["modifiedIndex"] = v.ModRevision
+					node["createdIndex"] = kv.CreateRevision
+					node["modifiedIndex"] = kv.ModRevision
 				}
 				level := len(strings.Split(k, Separator))
 				if level > max {
