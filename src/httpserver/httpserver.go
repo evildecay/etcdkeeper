@@ -172,7 +172,11 @@ func get(w http.ResponseWriter, r *http.Request){
 				node["key"] = string(kv.Key)
 				node["value"] = string(kv.Value)
 				node["dir"] = false
-				node["ttl"] = getTTL(kv.Lease)
+				if key == string(kv.Key) {
+					node["ttl"] = getTTL(kv.Lease)
+				} else {
+					node["ttl"] = 0
+				}
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				nodes := pnode["nodes"].([]map[string]interface{})
@@ -278,7 +282,11 @@ func getPath(w http.ResponseWriter, r *http.Request){
 				node := map[string]interface{}{"key":k}
 				if node["key"].(string) == string(v.Key) {
 					node["value"] = string(v.Value)
-					node["ttl"] = getTTL(v.Lease)
+					if key == string(v.Key) {
+						node["ttl"] = getTTL(v.Lease)
+					} else {
+						node["ttl"] = 0
+					}
 					node["createdIndex"] = v.CreateRevision
 					node["modifiedIndex"] = v.ModRevision
 				}
