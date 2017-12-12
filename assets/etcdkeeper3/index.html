@@ -105,6 +105,7 @@
 	</div>
 	
 	<script>
+		var separator = '';
 		var serverBase = '';
 		var etcdBase = Cookies.get("etcd-endpoint");
 		if(typeof(etcdBase) === 'undefined') {
@@ -127,6 +128,22 @@
 			//autoFormat = 'false';
 		//}
 		
+		// get separator
+		$.ajax({
+			type: 'GET',
+			timeout: 5000,
+			url:  serverBase + '/separator',
+			async: false,
+			dataType: 'text',
+			success: function(data) {
+				separator = data;
+				console.log(data);
+			},
+			error: function(err) {
+				$.messager.alert('Error', $.toJSON(err), 'error');
+			}
+		});
+		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
 			editor.getSession().setMode('ace/mode/' + aceMode);
@@ -148,7 +165,7 @@
 			if (newValue === '') {
 				$.messager.alert('Error','ETCD address is empty.','error');
 			}else {
-				Cookies.set('etcd-endpoint', newValue);
+				Cookies.set('etcd-endpoint', newValue, {expires: 30});
 				etcdBase = newValue;
 				connect();
 			}
@@ -192,8 +209,8 @@
 				id      : getId(),
 				children: [],
 				dir     : true,
-				path    : '/',
-				text    : '/',
+				path    : separator,
+				text    : separator,
 				iconCls : 'icon-dir'
 			};
 			tree = [];
@@ -204,7 +221,7 @@
 		}
 		
 		function resetValue() {
-			$('#elayout').layout('panel','center').panel('setTitle', '/');
+			$('#elayout').layout('panel','center').panel('setTitle', separator);
 			editor.getSession().setValue('');
 			editor.setReadOnly(true);
 			$('#footer').html('&nbsp;');
@@ -307,7 +324,7 @@
 			if (treeMode === 'list') {
 				text = n.key;
 			} else {
-				var path = n.key.split('/');
+				var path = n.key.split(separator);
 				text = path[path.length - 1];
 			}
 			var obj = {
@@ -376,15 +393,15 @@
 		function createNode() {
 			var node = $('#etree').tree('getSelected');
 			var nodePath = node.path;
-			if (nodePath === '/') {
+			if (nodePath === separator) {
 				nodePath = ''
 			}
 			
 			if (treeMode == 'list') {
 				if ($('#cnodeForm').form('validate')) {
 					var createNodePath = $('#name').textbox('getValue');
-					if (!createNodePath.startsWith('/')) {
-						createNodePath= '/' + $('#name').textbox('getValue');
+					if (!createNodePath.startsWith(separator)) {
+						createNodePath= separator + $('#name').textbox('getValue');
 					}
 					$.ajax({
 						type: 'PUT',
@@ -433,7 +450,7 @@
 			} else {
 				if ($('#cnodeForm').form('validate')) {
 					var pathArr = []
-					var inputArr = $('#name').textbox('getValue').split('/')
+					var inputArr = $('#name').textbox('getValue').split(separator)
 					for (var i in inputArr) {
 						if ($.trim(inputArr[i]) != '') {
 							pathArr.push(inputArr[i])
@@ -444,7 +461,7 @@
 						type: 'PUT',
 						timeout: 5000,
 						url:  serverBase + '/put',
-						data: {'key':nodePath + '/' + pathArr.join('/'),'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
+						data: {'key':nodePath + separator + pathArr.join(separator),'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
 						async: true,
 						dataType: 'text',
 						success: function(data) {
@@ -466,7 +483,7 @@
 											state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
 											dir:     $('#dir').combobox('getValue') == 'true'?true:false,
 											iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
-											path:    (prePath=='/'?(prePath + ''):(prePath + '/')) + pathArr[k],
+											path:    (prePath==separator?(prePath + ''):(prePath + separator)) + pathArr[k],
 											children:[]
 										};
 									}else {
@@ -476,7 +493,7 @@
 											state:   'closed',
 											dir:     true,
 											iconCls: 'icon-dir',
-											path:    (prePath=='/'?(prePath + ''):(prePath + '/')) + pathArr[k],
+											path:    (prePath==separator?(prePath + ''):(prePath + separator)) + pathArr[k],
 											children:[]
 										};
 									}
@@ -594,7 +611,7 @@
 		
 		function changeMode(mode) {
 			aceMode = mode;
-			Cookies.set('ace-mode', aceMode);
+			Cookies.set('ace-mode', aceMode, {expires: 30});
 			$('#' + curIconMode).remove();
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			curIconMode = 'mode_icon_' + aceMode;
@@ -622,18 +639,18 @@
 			} else {
 				treeMode = 'list';
 			}
-			Cookies.set('tree-mode', treeMode);
+			Cookies.set('tree-mode', treeMode, {expires: 30});
 			connect();
 		}
 		
 		function changeModeBySuffix(path) {
-			var a = path.split("/");
-			var tokens = a.slice(a.length-1,a.lenght)[0].split(".");
+			var a = path.split(separator);
+			var tokens = a.slice(a.length-1,a.lenght)[0].split('.');
 			if (tokens.length < 2) {
 				return
 			}
 			var mode = tokens[tokens.length-1]
-			var modes = $("#modeMenu").children();
+			var modes = $('#modeMenu').children();
 			for (var i=0;i<modes.length;i++) {
 				m = modes[i].innerText;
 				if (mode === m) {

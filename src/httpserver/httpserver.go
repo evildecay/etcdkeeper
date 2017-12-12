@@ -16,21 +16,24 @@ import(
 )
 
 var (
-	cli *clientv3.Client
-	Separator = "/"
+	cli       *clientv3.Client
+	sep       = flag.String("sep", "/", "separator")
+	separator = ""
 )
 
 
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
 	port := flag.Int("p", 8080, "port")
-	name := flag.String("n", "/request", "request root name")
+	name := flag.String("n", "/request", "request root name for etcdv2")
 	flag.CommandLine.Parse(os.Args[1:])
+	separator = *sep
 
 	// v2
 	http.HandleFunc(*name, v2request)
 
 	// v3
+	http.HandleFunc("/separator", getSeparator)
 	http.HandleFunc("/connect", connect)
 	http.HandleFunc("/put", put)
 	http.HandleFunc("/get", get)
@@ -81,7 +84,7 @@ func v2request(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func connect(w http.ResponseWriter, r *http.Request){
+func connect(w http.ResponseWriter, r *http.Request) {
 	if cli != nil {
 		etcdHost := cli.Endpoints()[0]
 		if r.FormValue("host") == etcdHost {
@@ -108,7 +111,11 @@ func connect(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func put(w http.ResponseWriter, r *http.Request){
+func getSeparator(w http.ResponseWriter, _ *http.Request) {
+	io.WriteString(w, separator)
+}
+
+func put(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	ttl := r.FormValue("ttl")
@@ -155,7 +162,7 @@ func put(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func get(w http.ResponseWriter, r *http.Request){
+func get(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	data := make(map[string]interface{})
 	log.Println("GET", "v3", key)
@@ -208,7 +215,7 @@ func get(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func getPath(w http.ResponseWriter, r *http.Request){
+func getPath(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	log.Println("GET", "v3", key)
 	var (
@@ -232,12 +239,12 @@ func getPath(w http.ResponseWriter, r *http.Request){
 		}
 		return
 	}
-	if key == Separator {
+	if key == separator {
 		min = 1
-		prefixKey = Separator
+		prefixKey = separator
 	} else {
-		min = len(strings.Split(key, Separator))
-		prefixKey = key + Separator
+		min = len(strings.Split(key, separator))
+		prefixKey = key + separator
 	}
 	max = min
 	all[min] = []map[string]interface{}{{"key":key}}
@@ -262,17 +269,17 @@ func getPath(w http.ResponseWriter, r *http.Request){
 	}
 
 	for _, kv := range resp.Kvs {
-		if string(kv.Key) == Separator {
+		if string(kv.Key) == separator {
 			continue
 		}
-		keys := strings.Split(string(kv.Key), Separator) // /foo/bar
+		keys := strings.Split(string(kv.Key), separator) // /foo/bar
 		var begin bool
 		for i := range keys { // ["", "foo", "bar"]
-			k := strings.Join(keys[0:i+1], Separator)
+			k := strings.Join(keys[0:i+1], separator)
 			if k == "" {
 				continue
 			}
-			if key == Separator {
+			if key == separator {
 				begin = true
 			} else if k == key {
 				begin = true
@@ -290,7 +297,7 @@ func getPath(w http.ResponseWriter, r *http.Request){
 					node["createdIndex"] = kv.CreateRevision
 					node["modifiedIndex"] = kv.ModRevision
 				}
-				level := len(strings.Split(k, Separator))
+				level := len(strings.Split(k, separator))
 				if level > max {
 					max = level
 				}
@@ -321,7 +328,7 @@ func getPath(w http.ResponseWriter, r *http.Request){
 					pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
 					pa["dir"] = true
 				} else {
-					if strings.HasPrefix(a["key"].(string), pa["key"].(string) + Separator) {
+					if strings.HasPrefix(a["key"].(string), pa["key"].(string) +separator) {
 						pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
 						pa["dir"] = true
 					}
@@ -337,7 +344,7 @@ func getPath(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func del(w http.ResponseWriter, r *http.Request){
+func del(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	dir := r.FormValue("dir")
 	log.Println("DELETE", "v3", key)
@@ -348,7 +355,7 @@ func del(w http.ResponseWriter, r *http.Request){
 	}
 
 	if dir == "true" {
-		if _, err := cli.Delete(context.Background(), key + "/", clientv3.WithPrefix());err != nil {
+		if _, err := cli.Delete(context.Background(), key +separator, clientv3.WithPrefix());err != nil {
 			io.WriteString(w, err.Error())
 			return
 		}
