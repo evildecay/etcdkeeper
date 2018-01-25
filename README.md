@@ -17,8 +17,8 @@
         name (default: request, etcdv2 need to be used)
 ```
 * Open your browser and enter the address. 
-  - etcdv2: http://127.0.0.1:8080/etcdkeeper
-  - etcdv3: http://127.0.0.1:8080/etcdkeeper3
+  - etcdv2: http://127.0.0.1:8080/v2
+  - etcdv3: http://127.0.0.1:8080/v3
 * Right click on the tree node to add or delete.
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
