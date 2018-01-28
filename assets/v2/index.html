@@ -13,6 +13,7 @@
 	<script type="text/javascript" src="../framework/easyui/easyui-lang-zh_CN.js"></script>
 	<script type="text/javascript" src="../framework/jquery/jquery.json-2.2.js"></script>
 	<script type="text/javascript" src="../framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="../framework/js.cookie-2.1.4.min.js"></script>
 	<script type="text/javascript" src="../framework/ace/ace.js" charset="utf-8"></script>
 	<style>
 		#value {
@@ -30,6 +31,8 @@
 	<h2>ETCD Keeper</h2>
 	<div class="noborder">
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:connect,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
+		<br>
+		ETCD Version: <select id="etcdVersion" class="easyui-combobox" style="width:40px"><option value="v2">v2</option><option value="v3">v3</option></select>
 	</div>
 	<div style="margin:20px 0;"></div>
 	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
@@ -117,6 +120,10 @@
 			init();
 		});
 		
+		$('#etcdVersion').combobox({
+			onChange: changeVersion
+		})
+
 		function init() {
 			$('#etcdAddr').textbox('setValue', etcdBase);
 			var t = $('#etree').tree({
@@ -493,6 +500,11 @@
 		
 		function getId() {
 			return idCount++;
+		}
+
+		function changeVersion(version) {
+			Cookies.set('etcd-version', version, {expires: 30});
+			window.location.href = "../" + version
 		}
 		
 		function changeMode(mode) {
