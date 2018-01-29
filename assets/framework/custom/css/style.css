@@ -20,3 +20,13 @@ h2 {
 .noborder span{
     border: 0px solid #ddd;
 }
+
+#value {
+    position: absolute;
+    top: 40px;
+    right: 15px;
+    bottom: 40px;
+    left: 15px;
+    border:1px solid #ddd;
+    font-size: 13px!important;
+}
