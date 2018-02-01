@@ -1,5 +1,8 @@
 var serverBase = '/request?url=';
-var etcdBase = 'http://127.0.0.1:2379/v2/keys';
+var etcdBase = Cookies.get("etcd-endpoint");
+if(typeof(etcdBase) === 'undefined') {
+    etcdBase = "127.0.0.1:2379";
+}
 var tree = [];
 var idCount = 0;
 var editor = ace.edit('value');
@@ -32,6 +35,7 @@ function connect(newValue, oldValue) {
     if (newValue == '') {
         $.messager.alert('Error','ETCD address is empty.','error');
     }
+    Cookies.set('etcd-endpoint', newValue, {expires: 30});
     etcdBase = newValue;
     reload();
 }
@@ -119,7 +123,7 @@ function showNode(node) {
         $.ajax({
             type: 'GET',
             timeout: 5000,
-            url:  serverBase + etcdBase + node.path,
+            url:  serverBase + etcdBase + '/v2/keys' + node.path,
             data: '',
             async: true,
             dataType: 'json',
@@ -153,7 +157,7 @@ function showNode(node) {
             $.ajax({
                 type: 'GET',
                 timeout: 5000,
-                url:  serverBase + encodeURIComponent(etcdBase + node.path + '?recursive=true&sorted=true'),
+                url:  serverBase + encodeURIComponent(etcdBase + '/v2/keys' + node.path + '?recursive=true&sorted=true'),
                 data: '',
                 async: true,
                 dataType: 'json',
@@ -231,7 +235,7 @@ function saveValue() {
         $.ajax({
             type: 'PUT',
             timeout: 5000,
-            url:  serverBase + etcdBase + node.path,
+            url:  serverBase + etcdBase + '/v2/keys' + node.path,
             data: {value:editor.getValue()},
             async: true,
             dataType: 'json',
@@ -268,7 +272,7 @@ function createNode() {
         $.ajax({
             type: 'PUT',
             timeout: 5000,
-            url:  serverBase + etcdBase + nodePath + '/' + pathArr.join('/'),
+            url:  serverBase + etcdBase + '/v2/keys' + nodePath + '/' + pathArr.join('/'),
             data: {dir:$('#dir').combobox('getValue'),value:$('#cvalue').textbox().val(),ttl:$('#ttl').numberbox().val()},
             async: true,
             dataType: 'text',
@@ -352,7 +356,7 @@ function removeNode() {
             $.ajax({
                 type: 'DELETE',
                 timeout: 5000,
-                url:  serverBase + etcdBase + node.path + '?recursive=true',
+                url:  serverBase + etcdBase + '/v2/keys' + node.path + '?recursive=true',
                 data: {},
                 async: true,
                 dataType: 'text',
