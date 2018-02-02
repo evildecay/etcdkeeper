@@ -1,61 +1,8 @@
 var serverBase = '/request?url=';
-var etcdBase = Cookies.get("etcd-endpoint");
-if(typeof(etcdBase) === 'undefined') {
-    etcdBase = "127.0.0.1:2379";
-}
-var tree = [];
-var idCount = 0;
-var editor = ace.edit('value');
-var currentMode = 'mode_icon_text'
+var separator = '/'
 
-$(document).ready(function() {
-    editor.setTheme('ace/theme/github');
-    editor.getSession().setMode('ace/mode/text');
-    $('#mode_text').append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
-    init();
-});
-
-$('#etcdVersion').combobox({
-    onChange: changeVersion
-})
-
-function init() {
-    $('#etcdAddr').textbox('setValue', etcdBase);
-    var t = $('#etree').tree({
-        animate:true,
-        onClick:showNode,
-        //lines:true,
-        onContextMenu:showMenu
-    });
-    //queryAll();
-    //$("#etree").tree("loadData", tree);
-}
-
-function connect(newValue, oldValue) {
-    if (newValue == '') {
-        $.messager.alert('Error','ETCD address is empty.','error');
-    }
-    Cookies.set('etcd-endpoint', newValue, {expires: 30});
-    etcdBase = newValue;
+function connect() {
     reload();
-}
-
-function reload() {
-    //queryAll();
-    var rootNode = {
-        id      : getId(),
-        children: [],
-        dir     : true,
-        path    : '/',
-        text    : '/',
-        iconCls : 'icon-dir'
-    };
-    
-    tree = []
-    tree.push(rootNode)
-    $('#etree').tree('loadData', tree);
-    showNode($('#etree').tree('getRoot'));
-    resetValue();
 }
 
 function resetValue() {
@@ -64,56 +11,6 @@ function resetValue() {
     editor.setReadOnly(true);
     $('#footer').html('&nbsp;');
 }
-
-/*
-function queryAll() {
-    tree = [];
-    $.ajax({
-        type: "GET",
-        timeout: 10000,
-        url:  serverBase + encodeURIComponent(etcdBase + "/?recursive=true&sorted=true"),
-        data: {},
-        async: false,
-        dataType: "json",
-        success: function(data) {
-            data.node.key = "/";
-            loopNodes(data.node, tree);
-        },
-        error: function(err) {
-            $.messager.alert('Error',$.toJSON(err),'error');
-        }
-    });
-}
-
-function loopNodes(node, parent) {
-    var curNode = {};
-    curNode.id = getId();
-    curNode.children = [];
-    curNode.dir = false;
-    curNode.path = node.key;
-    curNode.iconCls = "icon-text";
-    if (node.key == "/") {
-        curNode.text = "/";
-    }else {
-        curNode.text = node.key.split("/").pop();
-    }
-    if (node.dir == true) {
-        curNode.state = "closed";
-        curNode.dir = true;
-        curNode.iconCls = "icon-dir";
-        if (node.nodes) {
-            for (var i in node.nodes) {
-                loopNodes(node.nodes[i], curNode);
-            }
-        }
-    }
-    if (node.key == "/") {
-        parent.push(curNode);
-    }else {
-        parent.children.push(curNode);
-    }
-}
-*/
 
 function showNode(node) {
     $('#elayout').layout('panel','center').panel('setTitle', node.path);
@@ -133,11 +30,14 @@ function showNode(node) {
                     resetValue()
                 }else {
                     editor.getSession().setValue(data.node.value);
+                    if (autoFormat === 'true') {
+                        format(aceMode);
+                    }
                     var ttl = 0;
                     if (data.node.ttl) {
                         ttl = data.node.ttl;
                     }
-                    $('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);							
+                    changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
                 } 
             },
             error: function(err) {
@@ -339,16 +239,6 @@ function createNode() {
     }
 }
 
-function nodeExist(p) {
-    for (var i=0;i<=idCount;i++) {
-        var node = $('#etree').tree('find', i);
-        if (node != null && node.path == p) {
-            return node;
-        }
-    }
-    return null;
-}
-
 function removeNode() {
     var node = $('#etree').tree('getSelected');
     $.messager.confirm('Confirm', 'Remove ' + node.text + '?', function(r){
@@ -373,39 +263,9 @@ function removeNode() {
     });
 }
 
-function selDir(item) {
-    if (item.value == 'true') {
-        $('#cvalue').textbox('disable','none');
-    }else {
-        $('#cvalue').textbox('enable','none');
-    }
-}
-
-function alertMessage(msg) {
-    $.messager.show({
-        title:'Message',
-        msg:msg,
-        showType:'slide',
-        timeout:1000,
-        style:{
-            right:'',
-            bottom:''
-        }
-    });
-}
-
-function getId() {
-    return idCount++;
-}
-
-function changeVersion(version) {
-    Cookies.set('etcd-version', version, {expires: 30});
-    window.location.href = "../" + version
-}
-
 function changeMode(mode) {
-    $('#' + currentMode).remove();
+    $('#' + curIconMode).remove();
     editor.getSession().setMode('ace/mode/' + mode);
-    currentMode = 'mode_icon_' + mode
-    $('#mode_' + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+    curIconMode = 'mode_icon_' + mode
+    $('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
 }

@@ -1,27 +1,10 @@
 var separator = '';
 var serverBase = '';
-var etcdBase = Cookies.get("etcd-endpoint");
-if(typeof(etcdBase) === 'undefined') {
-    etcdBase = "127.0.0.1:2379";
-}
-var tree = [];
-var idCount = 0;
-var editor = ace.edit('value');
-var curIconMode = 'mode_icon_text';
-var aceMode = Cookies.get('ace-mode');
-if (typeof(aceMode) === 'undefined') {
-    aceMode = 'text';
-}
 var treeMode = Cookies.get('tree-mode');
 if (typeof(treeMode) === 'undefined') {
     treeMode = 'list';
 }
-//var autoFormat = Cookies.get('auto-format');
-//if(typeof(autoFormat) === 'undefined') {
-    //autoFormat = 'false';
-//}
 
-// get separator
 $.ajax({
     type: 'GET',
     timeout: 5000,
@@ -30,43 +13,11 @@ $.ajax({
     dataType: 'text',
     success: function(data) {
         separator = data;
-        console.log(data);
     },
     error: function(err) {
         $.messager.alert('Error', $.toJSON(err), 'error');
     }
 });
-
-$(document).ready(function() {
-    editor.setTheme('ace/theme/github');
-    editor.getSession().setMode('ace/mode/' + aceMode);
-    changeMode(aceMode);
-    init();
-});
-
-$('#etcdVersion').combobox({
-    onChange: changeVersion
-})
-
-function init() {
-    $('#etcdAddr').textbox('setValue', etcdBase);
-    var t = $('#etree').tree({
-        animate:true,
-        onClick:showNode,
-        //lines:true,
-        onContextMenu:showMenu
-    });
-}
-
-function changeHost(newValue, oldValue) {
-    if (newValue === '') {
-        $.messager.alert('Error','ETCD address is empty.','error');
-    }else {
-        Cookies.set('etcd-endpoint', newValue, {expires: 30});
-        etcdBase = newValue;
-        connect();
-    }
-}
 
 function connect() {
     var status = 'ok';
@@ -101,22 +52,6 @@ function connect() {
     }
 }
 
-function reload() {
-    var rootNode = {
-        id      : getId(),
-        children: [],
-        dir     : true,
-        path    : separator,
-        text    : separator,
-        iconCls : 'icon-dir'
-    };
-    tree = [];
-    tree.push(rootNode);
-    $('#etree').tree('loadData', tree);
-    showNode($('#etree').tree('getRoot'));
-    resetValue();
-}
-
 function resetValue() {
     $('#elayout').layout('panel','center').panel('setTitle', separator);
     editor.getSession().setValue('');
@@ -142,9 +77,9 @@ function showNode(node) {
                     resetValue()
                 }else {
                     editor.getSession().setValue(data.node.value);
-                    //if (autoFormat === 'true') {
-                        //format(aceMode);
-                    //}
+                    /*if (autoFormat === 'true') {
+                        format(aceMode);
+                    }*/
                     var ttl = 0;
                     if (data.node.ttl) {
                         ttl = data.node.ttl;
@@ -432,16 +367,6 @@ function createNode() {
     
 }
 
-function nodeExist(p) {
-    for (var i=0;i<=idCount;i++) {
-        var node = $('#etree').tree('find', i);
-        if (node !== null && node.path === p) {
-            return node;
-        }
-    }
-    return null;
-}
-
 function removeNode() {
     var node = $('#etree').tree('getSelected');
     $.messager.confirm('Confirm', 'Remove ' + node.text + '?', function(r){
@@ -479,50 +404,6 @@ function removeNode() {
             });
         }
     });
-}
-
-function selDir(item) {
-    if (item.value === 'true') {
-        $('#cvalue').textbox('disable','none');
-    }else {
-        $('#cvalue').textbox('enable','none');
-    }
-}
-
-function alertMessage(msg) {
-    $.messager.show({
-        title:'Message',
-        msg:msg,
-        showType:'slide',
-        timeout:1000,
-        style:{
-            right:'',
-            bottom:''
-        }
-    });
-}
-
-function getId() {
-    return idCount++;
-}
-
-function changeVersion(version) {
-    Cookies.set('etcd-version', version, {expires: 30});
-    window.location.href = "../" + version
-}
-
-function changeMode(mode) {
-    aceMode = mode;
-    Cookies.set('ace-mode', aceMode, {expires: 30});
-    $('#' + curIconMode).remove();
-    editor.getSession().setMode('ace/mode/' + aceMode);
-    curIconMode = 'mode_icon_' + aceMode;
-    $('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
-    $('#showMode').html(aceMode);
-}
-
-function changeFooter(ttl, cIndex, mIndex) {
-    $('#footer').html('<span>TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CreateRevision&nbsp;:&nbsp;' + cIndex + '&nbsp;&nbsp;&nbsp;&nbsp;ModRevision&nbsp;:&nbsp;' + mIndex + '</span><span id="showMode" style="position: absolute;right: 10px;color: #777;">' + aceMode + '</span>');
 }
 
 function format(type) {

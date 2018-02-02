@@ -19,7 +19,7 @@
 <body>
 	<h2>ETCD Keeper</h2>
 	<div class="noborder">
-		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:connect,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
+		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 		<br>
 		ETCD Version: <select id="etcdVersion" class="easyui-combobox" style="width:40px"><option value="v2">v2</option><option value="v3">v3</option></select>
 	</div>
@@ -94,6 +94,7 @@
 		<div id="mode_javascript" onclick="changeMode('javascript')">javascript</div>
 	</div>
 	
+	<script src="../common/common.js"></script>
 	<script src="./script.js"></script>
 </body>
 </html>
