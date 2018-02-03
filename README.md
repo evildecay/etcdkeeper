@@ -33,7 +33,7 @@ Following enviroment variables are available for change the etcdkeeper default c
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
 
 ## Screenshots
-![image](./screenshots/ui.png)
+![image](https://github.com/AndresCidoncha/etcdkeeper/blob/master/screenshots/ui.png?raw=true)
 
 ## License
 MIT
