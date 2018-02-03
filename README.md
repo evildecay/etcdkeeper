@@ -5,10 +5,8 @@
 * Based easyui framework to achieve(easyui license [easyui website](http://www.jeasyui.com)).
 
 ## Usage
-1. Start the container executing: `docker run -P andrescc/etcdkeeper`
-2. Open your browser and enter the address:
-  - etcdv2: http://127.0.0.1:8080/v2
-  - etcdv3: http://127.0.0.1:8080/v3
+1. Start the container executing: `docker run -p8080:8080 andrescc/etcdkeeper`
+2. Open your browser and enter the address: http://127.0.0.1:8080
 3. Right click on the tree node to add or delete.
 4. Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
@@ -19,10 +17,8 @@ Following enviroment variables are available for change the etcdkeeper default c
         host name or ip address (default: "127.0.0.1", the http server addreess, not etcd address)
   PORT int
         port (default 8080)
-  NAME string
-        name (default: request, etcdv2 need to be used)
 ```
-**Example:** `docker run --env HOST=0.0.0.0 --env PORT=9090 andrescc/etcdkeeper:test`
+**Example:** `docker run --env HOST=0.0.0.0 --env PORT=9090 -p9090:9090 andrescc/etcdkeeper`
 
 ## Features
 * Etcd client view, Add, update or delete nodes.
@@ -37,10 +33,7 @@ Following enviroment variables are available for change the etcdkeeper default c
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
 
 ## Screenshots
-### etcdv2
-![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/ui.png)
-### etcdv3
-![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/uiv3.png)
+![image](./screenshots/ui.png)
 
 ## License
 MIT
