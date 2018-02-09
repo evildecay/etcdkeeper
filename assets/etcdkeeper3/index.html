@@ -27,7 +27,7 @@
 		}
 	</style>
 </head>
-<body>
+<body style="overflow: hidden;">
 	<h2>ETCD Keeper v3</h2>
 	<div class="noborder">
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'127.0.0.1:2379',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
@@ -105,6 +105,15 @@
 	</div>
 	
 	<script>
+		resizeWindow();
+		$(window).resize(function(){ // FIXME: invalid
+			resizeWindow();
+		});
+		
+		function resizeWindow(){
+			$('#elayout').height(($(window).height() - 128) + 'px')
+		}
+		
 		var separator = '';
 		var serverBase = '';
 		var etcdBase = Cookies.get("etcd-endpoint");

@@ -26,7 +26,7 @@
 		}
 	</style>
 </head>
-<body>
+<body style="overflow: hidden;">
 	<h2>ETCD Keeper</h2>
 	<div class="noborder">
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:connect,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
@@ -103,6 +103,15 @@
 	</div>
 	
 	<script>
+		resizeWindow();
+		$(window).resize(function(){ // FIXME: invalid
+			resizeWindow();
+		});
+		
+		function resizeWindow(){
+			$('#elayout').height(($(window).height() - 128) + 'px')
+		}
+		
 		var serverBase = '/request?url=';
 		var etcdBase = 'http://127.0.0.1:2379/v2/keys';
 		var tree = [];
