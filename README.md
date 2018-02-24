@@ -15,6 +15,8 @@
         port (default 8080)
   -n string
         name (default: request, etcdv2 need to be used)
+  -sep string
+        Separator (default "/")
 ```
 * Open your browser and enter the address. 
   - etcdv2: http://127.0.0.1:8080/etcdkeeper
