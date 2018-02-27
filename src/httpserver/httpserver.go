@@ -21,7 +21,6 @@ var (
 	separator = ""
 )
 
-
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
 	port := flag.Int("p", 8080, "port")
@@ -78,7 +77,7 @@ func v2request(w http.ResponseWriter, r *http.Request){
 		result, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			io.WriteString(w, "Get data failed: " + err.Error())
-		}else {
+		} else {
 			io.WriteString(w, string(result))
 		}
 	}
@@ -102,10 +101,11 @@ func connect(w http.ResponseWriter, r *http.Request) {
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	})
+
 	if err != nil {
 		log.Println(r.Method, "v3", "connect fail.")
 		io.WriteString(w, string(err.Error()))
-	}else {
+	} else {
 		log.Println(r.Method, "v3", "connect success.")
 		io.WriteString(w, "ok")
 	}
@@ -132,15 +132,15 @@ func put(w http.ResponseWriter, r *http.Request) {
 		var leaseResp *clientv3.LeaseGrantResponse
 		leaseResp, err = cli.Grant(context.TODO(), sec)
 		_, err = cli.Put(context.Background(), key, value, clientv3.WithLease(leaseResp.ID))
-	}else {
+	} else {
 		_, err = cli.Put(context.Background(), key, value)
 	}
 	if err != nil {
 		io.WriteString(w, string(err.Error()))
-	}else {
+	} else {
 		if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
 			data["errorCode"] = err.Error()
-		}else {
+		} else {
 			if resp.Count > 0 {
 				kv := resp.Kvs[0]
 				node := make(map[string]interface{})
@@ -169,7 +169,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 
 	if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
 		data["errorCode"] = err.Error()
-	}else {
+	} else {
 		if r.FormValue("prefix") == "true" {
 			pnode := make(map[string]interface{})
 			pnode["key"] = key
@@ -190,7 +190,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 				pnode["nodes"] = append(nodes, node)
 			}
 			data["node"] = pnode
-		}else {
+		} else {
 			if resp.Count > 0 {
 				kv := resp.Kvs[0]
 				node := make(map[string]interface{})
@@ -201,7 +201,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
-			}else {
+			} else {
 				data["errorCode"] = "The node does not exist."
 			}
 		}
