@@ -13,18 +13,25 @@ import(
 	"encoding/json"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
+	"github.com/coreos/etcd/pkg/transport"
+	"crypto/tls"
 )
 
 var (
 	cli       *clientv3.Client
 	sep       = flag.String("sep", "/", "separator")
 	separator = ""
+	usetls    = flag.Bool("usetls", false, "use tls")
+	cacert    = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
+	cert      = flag.String("cert", "", "identify secure client using this TLS certificate file")
+	keyfile   = flag.String("key", "", "identify secure client using this TLS key file")
 )
 
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
 	port := flag.Int("p", 8080, "port")
 	name := flag.String("n", "/request", "request root name for etcdv2")
+
 	flag.CommandLine.Parse(os.Args[1:])
 	separator = *sep
 
@@ -97,9 +104,25 @@ func connect(w http.ResponseWriter, r *http.Request) {
 	}
 	endpoints := []string{r.FormValue("host")}
 	var err error
+
+	// use tls if usetls is true
+	var tlsConfig *tls.Config
+	if *usetls {
+		tlsInfo := transport.TLSInfo{
+			CertFile:      *cert,
+			KeyFile:       *keyfile,
+			TrustedCAFile: *cacert,
+		}
+		tlsConfig, err = tlsInfo.ClientConfig()
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}
+
 	cli, err = clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
+		TLS:         tlsConfig,
 	})
 
 	if err != nil {
