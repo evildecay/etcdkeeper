@@ -14,9 +14,9 @@
 	<script type="text/javascript" src="./framework/custom/js/common.js"></script>
 	<script type="text/javascript" src="./framework/js.cookie-2.1.4.min.js"></script>
 	<script type="text/javascript" src="./framework/ace/ace.js" charset="utf-8"></script>
-	
+
 </head>
-<body>
+<body style="overflow: hidden;">
 	<h2>ETCD Keeper</h2>
 	<div class="noborder">
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcd:2379',iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
@@ -32,7 +32,7 @@
 			<div id="value"></div>
 		</div>
 	</div>
-	
+
 	<div id="footer" style="padding:5px;color:#777;">&nbsp;</div>
 	<div id="westTools">
 		<a href="javascript:void(0)" class="icon-reload" onclick="connect();" title="Refresh tree"></a>
@@ -49,7 +49,7 @@
 	<div id="treeNodeMenu" class="easyui-menu" style="width:150px;">
 		<div onclick="removeNode()" data-options="iconCls:'icon-remove'">Remove Node</div>
 	</div>
-	
+
 	<div id="cnode" class="easyui-window" title="Create node" data-options="modal:true,closed:true" style="width:650px;height:480px;padding:10px;">
 		<div style="padding:10px 40px 20px 40px">
 	    <form id="cnodeForm" method="put">
@@ -82,7 +82,7 @@
 	    </div>
 	    </div>
 	</div>
-	
+
 	<div id="modeMenu" style="">
 		<div id="mode_text" onclick="changeMode('text')">text</div>
 		<div id="mode_toml" onclick="changeMode('toml')">toml</div>

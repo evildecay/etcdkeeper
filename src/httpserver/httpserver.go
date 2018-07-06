@@ -13,19 +13,25 @@ import(
 	"encoding/json"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
+	"github.com/coreos/etcd/pkg/transport"
+	"crypto/tls"
 )
 
 var (
 	cli       *clientv3.Client
 	sep       = flag.String("sep", "/", "separator")
 	separator = ""
+	usetls    = flag.Bool("usetls", false, "use tls")
+	cacert    = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
+	cert      = flag.String("cert", "", "identify secure client using this TLS certificate file")
+	keyfile   = flag.String("key", "", "identify secure client using this TLS key file")
 )
-
 
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
 	port := flag.Int("p", 8080, "port")
 	name := flag.String("n", "/request", "request root name for etcdv2")
+
 	flag.CommandLine.Parse(os.Args[1:])
 	separator = *sep
 
@@ -78,7 +84,7 @@ func v2request(w http.ResponseWriter, r *http.Request){
 		result, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			io.WriteString(w, "Get data failed: " + err.Error())
-		}else {
+		} else {
 			io.WriteString(w, string(result))
 		}
 	}
@@ -98,14 +104,31 @@ func connect(w http.ResponseWriter, r *http.Request) {
 	}
 	endpoints := []string{r.FormValue("host")}
 	var err error
+
+	// use tls if usetls is true
+	var tlsConfig *tls.Config
+	if *usetls {
+		tlsInfo := transport.TLSInfo{
+			CertFile:      *cert,
+			KeyFile:       *keyfile,
+			TrustedCAFile: *cacert,
+		}
+		tlsConfig, err = tlsInfo.ClientConfig()
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}
+
 	cli, err = clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
+		TLS:         tlsConfig,
 	})
+
 	if err != nil {
 		log.Println(r.Method, "v3", "connect fail.")
 		io.WriteString(w, string(err.Error()))
-	}else {
+	} else {
 		log.Println(r.Method, "v3", "connect success.")
 		io.WriteString(w, "ok")
 	}
@@ -132,15 +155,15 @@ func put(w http.ResponseWriter, r *http.Request) {
 		var leaseResp *clientv3.LeaseGrantResponse
 		leaseResp, err = cli.Grant(context.TODO(), sec)
 		_, err = cli.Put(context.Background(), key, value, clientv3.WithLease(leaseResp.ID))
-	}else {
+	} else {
 		_, err = cli.Put(context.Background(), key, value)
 	}
 	if err != nil {
 		io.WriteString(w, string(err.Error()))
-	}else {
+	} else {
 		if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
 			data["errorCode"] = err.Error()
-		}else {
+		} else {
 			if resp.Count > 0 {
 				kv := resp.Kvs[0]
 				node := make(map[string]interface{})
@@ -169,7 +192,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 
 	if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
 		data["errorCode"] = err.Error()
-	}else {
+	} else {
 		if r.FormValue("prefix") == "true" {
 			pnode := make(map[string]interface{})
 			pnode["key"] = key
@@ -190,7 +213,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 				pnode["nodes"] = append(nodes, node)
 			}
 			data["node"] = pnode
-		}else {
+		} else {
 			if resp.Count > 0 {
 				kv := resp.Kvs[0]
 				node := make(map[string]interface{})
@@ -201,7 +224,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 				node["createdIndex"] = kv.CreateRevision
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
-			}else {
+			} else {
 				data["errorCode"] = "The node does not exist."
 			}
 		}

@@ -23,6 +23,15 @@ if(typeof(etcdVersion) === 'undefined') {
     Cookies.set('etcd-version', etcdVersion, {expires: 30});
 }
 
+resizeWindow();
+$(window).resize(function(){ // FIXME: invalid
+    resizeWindow();
+});
+
+function resizeWindow(){
+    $('#elayout').height(($(window).height() - 128) + 'px')
+}
+
 $('#etcdVersion').val(etcdVersion);
 $('#etcdVersion').combobox({
     onChange: changeVersion
@@ -105,7 +114,7 @@ function connect() {
             }
         });
     }
-    
+
     if (status === 'ok') {
         reload();
     } else {
@@ -168,11 +177,11 @@ function showNodeOk2(data, node) {
             changeModeBySuffix(node.path);
         }
         var arr = [];
-        
-        if (data.node.nodes) {									
+
+        if (data.node.nodes) {
             // refresh child node
             for (var i in data.node.nodes) {
-                var newData = getNode(data.node.nodes[i]);	
+                var newData = getNode(data.node.nodes[i]);
                 arr.push(newData);
             }
             $('#etree').tree('append', {
@@ -180,11 +189,11 @@ function showNodeOk2(data, node) {
                 data: arr
             });
         }
-        
+
         for(var n in children) {
             $('#etree').tree('remove', children[n].target);
         }
-    } 
+    }
 }
 
 function showNode(node) {
@@ -208,7 +217,7 @@ function showNode(node) {
         }
         editor.setReadOnly(readOnly);
         $('#footer').html('&nbsp;');
-        
+
         // clear child node
         var children = $('#etree').tree('getChildren', node.target);
         var url = '';
@@ -332,7 +341,7 @@ function createNodeOk(data, node, pathArr) {
             preObj = obj;
             prePath = obj.path;
         }
-        
+
         if (etcdVersion === '3') {
             $('#etree').tree('update', {
                 target: node.target,
@@ -344,7 +353,7 @@ function createNodeOk(data, node, pathArr) {
             data: newData
         });
     }
-    
+
     $('#cvalue').textbox('enable','none');
     $('#cnodeForm').form('reset');
     $('#ttl').numberbox('setValue', '');
@@ -387,7 +396,7 @@ function removeNodeOk(data) {
         if (data === 'ok') {
             alertMessage('Delete success.');
             $('#etree').tree('remove', node.target);
-            
+
             var pnode = $('#etree').tree('getParent', node.target);
             if (pnode) {
                 var isLeaf = $('#etree').tree('isLeaf', pnode.target);

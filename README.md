@@ -13,7 +13,7 @@
 ## Options
 Following enviroment variables are available for change the etcdkeeper default configuration:
 ```
-  HOST string  
+  HOST string
         host name or ip address (default: "127.0.0.1", the http server addreess, not etcd address)
   PORT int
         port (default 8080)
@@ -39,4 +39,4 @@ Because the etcdv3 version uses the new storage concept, without the catalog con
 MIT
 
 ## Original repository
-[evildecay/etcdkeeper](https://github.com/evildecay/etcdkeeper) 
+[evildecay/etcdkeeper](https://github.com/evildecay/etcdkeeper)
