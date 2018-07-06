@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>ETCD Keeper</title>
+	<link rel="stylesheet" type="text/css" href="./framework/easyui/themes/metro/easyui.css">
+	<link rel="stylesheet" type="text/css" href="./framework/easyui/themes/icon.css">
+	<link rel="stylesheet" type="text/css" href="./framework/custom/css/style.css">
+	<script>document.documentElement.focus();</script>
+	<script type="text/javascript" src="./framework/easyui/jquery.min.js"></script>
+	<script type="text/javascript" src="./framework/easyui/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="./framework/easyui/easyui-lang-zh_CN.js"></script>
+	<script type="text/javascript" src="./framework/jquery/jquery.json-2.2.js"></script>
+	<script type="text/javascript" src="./framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="./framework/js.cookie-2.1.4.min.js"></script>
+	<script type="text/javascript" src="./framework/ace/ace.js" charset="utf-8"></script>
+
+</head>
+<body style="overflow: hidden;">
+	<h2>ETCD Keeper</h2>
+	<div class="noborder">
+		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcd:2379',iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
+		<br>
+		ETCD Version: <select id="etcdVersion" class="easyui-combobox" style="width:40px"><option value="2">v2</option><option value="3">v3</option></select>
+	</div>
+	<div style="margin:20px 0;"></div>
+	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
+		<div id="p" data-options="region:'west',tools:'#westTools'" title="Nodes" style="width:30%;padding:10px">
+			<ul id="etree" class="easyui-tree"></ul>
+		</div>
+		<div data-options="region:'center',tools:'#centerTools',footer:'#footer'" title="/" spellcheck="false" style="padding:10px;overflow:hidden;">
+			<div id="value"></div>
+		</div>
+	</div>
+
+	<div id="footer" style="padding:5px;color:#777;">&nbsp;</div>
+	<div id="westTools">
+		<a href="javascript:void(0)" class="icon-reload" onclick="connect();" title="Refresh tree"></a>
+	</div>
+	<div id="centerTools">
+		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
+		<a href="javascript:void(0)" class="icon-text" style="margin-right:4px;" onclick="format(aceMode);" title="Format content"></a>
+		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();" title="Save content"></a>
+	</div>
+	<div id="treeDirMenu" class="easyui-menu" style="width:150px;">
+		<div onclick="$('#cnode').window('open')" data-options="iconCls:'icon-add'">Create Node</div>
+		<div onclick="removeNode()" data-options="iconCls:'icon-remove'">Remove Node</div>
+	</div>
+	<div id="treeNodeMenu" class="easyui-menu" style="width:150px;">
+		<div onclick="removeNode()" data-options="iconCls:'icon-remove'">Remove Node</div>
+	</div>
+
+	<div id="cnode" class="easyui-window" title="Create node" data-options="modal:true,closed:true" style="width:650px;height:480px;padding:10px;">
+		<div style="padding:10px 40px 20px 40px">
+	    <form id="cnodeForm" method="put">
+	    	<table cellpadding="10">
+	    		<tr>
+	    			<td>Name:</td>
+	    			<td><input id="name" class="easyui-textbox" type="text" name="name" data-options="required:true" style="width:450px;"/></td>
+	    		</tr>
+				<tr>
+	    			<td>Dir:</td>
+	    			<td>
+	    				<select id="dir" class="easyui-combobox" name="dir" data-options="panelHeight:'auto',onSelect:selDir" style="width:70px;">
+							<option value="true">TRUE</option>
+							<option value="false" selected="selected">FALSE</option>
+						</select>
+	    			</td>
+	    		</tr>
+				<tr>
+	    			<td>TTL:</td>
+	    			<td><input id="ttl" class="easyui-numberbox" type="text" name="ttl" data-options="" style="width:450px;"/></td>
+	    		</tr>
+	    		<tr>
+	    			<td>Value:</td>
+	    			<td spellcheck="false"><textarea id="cvalue" class="easyui-textbox" name="value" data-options="multiline:true" style="width:450px;height:200px"></textarea></td>
+	    		</tr>
+	    	</table>
+	    </form>
+	    <div style="text-align:center;padding:5px">
+	    	<a href="javascript:void(0)" class="easyui-linkbutton" onclick="createNode()">Submit</a>
+	    </div>
+	    </div>
+	</div>
+
+	<div id="modeMenu" style="">
+		<div id="mode_text" onclick="changeMode('text')">text</div>
+		<div id="mode_toml" onclick="changeMode('toml')">toml</div>
+		<div id="mode_ini" onclick="changeMode('ini')">ini</div>
+		<div id="mode_yaml" onclick="changeMode('yaml')">yaml</div>
+		<div id="mode_xml" onclick="changeMode('xml')">xml</div>
+		<div id="mode_lua" onclick="changeMode('lua')">lua</div>
+		<div id="mode_javascript" onclick="changeMode('javascript')">javascript</div>
+		<div id="mode_json" onclick="changeMode('json')">json</div>
+	</div>
+	<script src="./script.js"></script>
+</body>
+</html>

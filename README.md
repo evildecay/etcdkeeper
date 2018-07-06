@@ -1,28 +1,24 @@
 ## etcdkeeper
-* Lightweight etcd web client.
+* Lightweight etcd web client in Docker.
 * Support etcd 2.x and etcd 3.x.
 * Server using the grpc interface, the server needs to compile the package etcd clientv3.
 * Based easyui framework to achieve(easyui license [easyui website](http://www.jeasyui.com)).
 
 ## Usage
-* Run httpserver.exe (windows version)
-* [Download other platform releases](https://github.com/evildecay/etcdkeeper/releases).
+1. Start the container executing: `docker run -p8080:8080 andrescc/etcdkeeper`
+2. Open your browser and enter the address: http://127.0.0.1:8080
+3. Right click on the tree node to add or delete.
+4. Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
+
+## Options
+Following enviroment variables are available for change the etcdkeeper default configuration:
 ```
-  Usage of httpserver.exe:  
-  -h string  
+  HOST string
         host name or ip address (default: "127.0.0.1", the http server addreess, not etcd address)
-  -p int
+  PORT int
         port (default 8080)
-  -n string
-        name (default: request, etcdv2 need to be used)
-  -sep string
-        Separator (default "/")
 ```
-* Open your browser and enter the address. 
-  - etcdv2: http://127.0.0.1:8080/etcdkeeper
-  - etcdv3: http://127.0.0.1:8080/etcdkeeper3
-* Right click on the tree node to add or delete.
-* Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
+**Example:** `docker run --env HOST=0.0.0.0 --env PORT=9090 -p9090:9090 andrescc/etcdkeeper`
 
 ## Features
 * Etcd client view, Add, update or delete nodes.
@@ -37,10 +33,10 @@
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
 
 ## Screenshots
-### etcdv2
-![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/ui.png)
-### etcdv3
-![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/uiv3.png)
+![image](https://github.com/AndresCidoncha/etcdkeeper/blob/master/screenshots/ui.png?raw=true)
 
 ## License
 MIT
+
+## Original repository
+[evildecay/etcdkeeper](https://github.com/evildecay/etcdkeeper)
