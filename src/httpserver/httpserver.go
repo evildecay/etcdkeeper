@@ -1,69 +1,158 @@
 package main
 
-import(
+import (
+	"crypto/tls"
+	"encoding/json"
+	"flag"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
-	"io/ioutil"
+	"strconv"
 	"strings"
 	"time"
-	"flag"
-	"strconv"
-	"encoding/json"
+
 	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/transport"
-	"crypto/tls"
+	"golang.org/x/net/context"
+)
+
+const (
+	defaultExpire = 24 * time.Hour
 )
 
 var (
-	cli       *clientv3.Client
-	sep       = flag.String("sep", "/", "separator")
-	separator = ""
-	usetls    = flag.Bool("usetls", false, "use tls")
-	cacert    = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
-	cert      = flag.String("cert", "", "identify secure client using this TLS certificate file")
-	keyfile   = flag.String("key", "", "identify secure client using this TLS key file")
+	cli          *clientv3.Client
+	sep          = flag.String("sep", "/", "separator")
+	separator    = ""
+	usetls       = flag.Bool("usetls", false, "use tls")
+	cacert       = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
+	cert         = flag.String("cert", "", "identify secure client using this TLS certificate file")
+	keyfile      = flag.String("key", "", "identify secure client using this TLS key file")
+	password     = flag.String("v3pwd", "", "login password for ectdkeeper3")
+	verifyString = ""
 )
 
 func main() {
-	host := flag.String("h","0.0.0.0","host name or ip address")
+	host := flag.String("h", "0.0.0.0", "host name or ip address")
 	port := flag.Int("p", 8080, "port")
 	name := flag.String("n", "/request", "request root name for etcdv2")
 
 	flag.CommandLine.Parse(os.Args[1:])
 	separator = *sep
 
+	middleware := func(fns ...func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
+			for _, fn := range fns {
+				fn(w, r)
+			}
+		}
+	}
+
 	// v2
 	http.HandleFunc(*name, v2request)
 
 	// v3
-	http.HandleFunc("/separator", getSeparator)
-	http.HandleFunc("/connect", connect)
-	http.HandleFunc("/put", put)
-	http.HandleFunc("/get", get)
-	http.HandleFunc("/delete", del)
+	http.HandleFunc("/separator", middleware(verify, getSeparator))
+	http.HandleFunc("/connect", middleware(verify, connect))
+	http.HandleFunc("/put", middleware(verify, put))
+	http.HandleFunc("/get", middleware(verify, get))
+	http.HandleFunc("/delete", middleware(verify, del))
+	http.HandleFunc("/v3", middleware(verify, v3))
+	http.HandleFunc("/v3/login", v3login)
+
 	// dirctory mode
 	http.HandleFunc("/getpath", getPath)
 
 	wd, err := os.Getwd()
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
 	//log.Println(http.Dir(wd + "/assets"))
 
-	http.Handle("/", http.FileServer(http.Dir(wd + "/assets"))) // view static directory
+	http.Handle("/", http.FileServer(http.Dir(wd+"/assets"))) // view static directory
 
 	log.Printf("listening on %s:%d\n", *host, *port)
-	err = http.ListenAndServe(*host + ":" + strconv.Itoa(*port), nil)
+	err = http.ListenAndServe(*host+":"+strconv.Itoa(*port), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func v2request(w http.ResponseWriter, r *http.Request){
+func setAuthCookie(w http.ResponseWriter) {
+	rand.Seed(time.Now().UnixNano())
+	verifyString = fmt.Sprintf("%4d%4d%4d", rand.Intn(9999), rand.Intn(9999), rand.Intn(9999))
+	cookie := http.Cookie{
+		Name:     "auth",
+		Value:    verifyString,
+		MaxAge:   int(defaultExpire / time.Second),
+		Expires:  time.Now().Add(defaultExpire),
+		Path:     "/",
+		HttpOnly: true,
+	}
+	w.Header().Set("Set-Cookie", cookie.String())
+}
+
+func verify(w http.ResponseWriter, r *http.Request) {
+	if *password == "" {
+		return
+	}
+	cookie, err := r.Cookie("auth")
+	if err != nil {
+		log.Println("read cookie err", err)
+		http.Redirect(w, r, "/v3/login", 302)
+		return
+	}
+	if cookie.Value != verifyString {
+		http.Redirect(w, r, "/v3/login", 302)
+		return
+	}
+}
+
+func v3login(w http.ResponseWriter, r *http.Request) {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	switch r.Method {
+	case http.MethodGet:
+		var ct []byte
+		ct, err = ioutil.ReadFile(wd + "/pages/etcdkeeper3/login.html")
+		if err != nil {
+			log.Println("err read file", wd+"/pages/etcdkeeper3/login.html")
+		}
+		w.Write(ct)
+	case http.MethodPost:
+		key := r.FormValue("password")
+		if key != *password {
+			io.WriteString(w, "login failed")
+		} else {
+			setAuthCookie(w)
+			http.Redirect(w, r, "/v3", 302)
+		}
+	default:
+		// Give an error message.
+	}
+}
+
+func v3(w http.ResponseWriter, r *http.Request) {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var ct []byte
+	ct, err = ioutil.ReadFile(wd + "/pages/etcdkeeper3/index.html")
+	if err != nil {
+		log.Println("err read file", wd+"/pages/etcdkeeper3/index.html")
+	}
+	w.Write(ct)
+}
+
+func v2request(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		log.Println(err.Error())
 	}
@@ -76,14 +165,14 @@ func v2request(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{Timeout: 10*time.Second} // important!!!
+	client := &http.Client{Timeout: 10 * time.Second} // important!!!
 	resp, err := client.Do(req)
 	if err != nil {
 		io.WriteString(w, err.Error())
-	}else {
+	} else {
 		result, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			io.WriteString(w, "Get data failed: " + err.Error())
+			io.WriteString(w, "Get data failed: "+err.Error())
 		} else {
 			io.WriteString(w, string(result))
 		}
@@ -96,8 +185,8 @@ func connect(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("host") == etcdHost {
 			io.WriteString(w, "running")
 			return
-		}else {
-			if err := cli.Close();err != nil {
+		} else {
+			if err := cli.Close(); err != nil {
 				log.Println(err.Error())
 			}
 		}
@@ -161,7 +250,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		io.WriteString(w, string(err.Error()))
 	} else {
-		if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
+		if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix()); err != nil {
 			data["errorCode"] = err.Error()
 		} else {
 			if resp.Count > 0 {
@@ -177,7 +266,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		var dataByte []byte
-		if dataByte, err = json.Marshal(data);err != nil {
+		if dataByte, err = json.Marshal(data); err != nil {
 			io.WriteString(w, err.Error())
 		} else {
 			io.WriteString(w, string(dataByte))
@@ -190,7 +279,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 	data := make(map[string]interface{})
 	log.Println("GET", "v3", key)
 
-	if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
+	if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix()); err != nil {
 		data["errorCode"] = err.Error()
 	} else {
 		if r.FormValue("prefix") == "true" {
@@ -231,7 +320,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 	}
 	var dataByte []byte
 	var err error
-	if dataByte, err = json.Marshal(data);err != nil {
+	if dataByte, err = json.Marshal(data); err != nil {
 		io.WriteString(w, err.Error())
 	} else {
 		io.WriteString(w, string(dataByte))
@@ -245,17 +334,17 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 		data = make(map[string]interface{})
 		/*
 			{1:["/"], 2:["/foo", "/foo2"], 3:["/foo/bar", "/foo2/bar"], 4:["/foo/bar/test"]}
-		 */
-		all = make(map[int][]map[string]interface{})
-		min int
-		max int
+		*/
+		all       = make(map[int][]map[string]interface{})
+		min       int
+		max       int
 		prefixKey string
 	)
 	// parent
 	presp, err := cli.Get(context.Background(), key)
 	if err != nil {
 		data["errorCode"] = err.Error()
-		if dataByte, err := json.Marshal(data);err != nil {
+		if dataByte, err := json.Marshal(data); err != nil {
 			io.WriteString(w, err.Error())
 		} else {
 			io.WriteString(w, string(dataByte))
@@ -270,7 +359,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 		prefixKey = key + separator
 	}
 	max = min
-	all[min] = []map[string]interface{}{{"key":key}}
+	all[min] = []map[string]interface{}{{"key": key}}
 	if presp.Count != 0 {
 		all[min][0]["value"] = string(presp.Kvs[0].Value)
 		all[min][0]["ttl"] = getTTL(presp.Kvs[0].Lease)
@@ -283,7 +372,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 	resp, err := cli.Get(context.Background(), prefixKey, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 	if err != nil {
 		data["errorCode"] = err.Error()
-		if dataByte, err := json.Marshal(data);err != nil {
+		if dataByte, err := json.Marshal(data); err != nil {
 			io.WriteString(w, err.Error())
 		} else {
 			io.WriteString(w, string(dataByte))
@@ -309,7 +398,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if begin {
-				node := map[string]interface{}{"key":k}
+				node := map[string]interface{}{"key": k}
 				if node["key"].(string) == string(kv.Key) {
 					node["value"] = string(kv.Value)
 					if key == string(kv.Key) {
@@ -325,7 +414,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 					max = level
 				}
 
-				if _, ok := all[level];!ok {
+				if _, ok := all[level]; !ok {
 					all[level] = make([]map[string]interface{}, 0)
 				}
 				levelNodes := all[level]
@@ -351,7 +440,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 					pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
 					pa["dir"] = true
 				} else {
-					if strings.HasPrefix(a["key"].(string), pa["key"].(string) +separator) {
+					if strings.HasPrefix(a["key"].(string), pa["key"].(string)+separator) {
 						pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
 						pa["dir"] = true
 					}
@@ -360,7 +449,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data = all[min][0]
-	if dataByte, err := json.Marshal(map[string]interface{}{"node":data});err != nil {
+	if dataByte, err := json.Marshal(map[string]interface{}{"node": data}); err != nil {
 		io.WriteString(w, err.Error())
 	} else {
 		io.WriteString(w, string(dataByte))
@@ -372,13 +461,13 @@ func del(w http.ResponseWriter, r *http.Request) {
 	dir := r.FormValue("dir")
 	log.Println("DELETE", "v3", key)
 
-	if _, err := cli.Delete(context.Background(), key);err != nil {
+	if _, err := cli.Delete(context.Background(), key); err != nil {
 		io.WriteString(w, err.Error())
 		return
 	}
 
 	if dir == "true" {
-		if _, err := cli.Delete(context.Background(), key +separator, clientv3.WithPrefix());err != nil {
+		if _, err := cli.Delete(context.Background(), key+separator, clientv3.WithPrefix()); err != nil {
 			io.WriteString(w, err.Error())
 			return
 		}

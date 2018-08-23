@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>ETCD Keeper v3</title>
+	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/metro/easyui.css">
+	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/icon.css">
+	<link rel="stylesheet" type="text/css" href="../framework/custom/css/style.css">
+	<!-- 此行代码解决ie8中iframe里嵌套此页面会导致jquery错误-->
+	<script>document.documentElement.focus();</script>
+	<script type="text/javascript" src="../framework/easyui/jquery.min.js"></script>
+	<script type="text/javascript" src="../framework/easyui/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="../framework/easyui/easyui-lang-zh_CN.js"></script>
+	<script type="text/javascript" src="../framework/jquery/jquery.json-2.2.js"></script>
+	<script type="text/javascript" src="../framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="../framework/js.cookie-2.1.4.min.js"></script>
+	<script type="text/javascript" src="../framework/ace/ace.js" charset="utf-8"></script>
+	<style>
+		#value {
+			position: absolute;
+			top: 40px;
+			right: 15px;
+			bottom: 40px;
+			left: 15px;
+			border:1px solid #ddd;
+			font-size: 13px!important;
+		}
+	</style>
+</head>
+<body style="overflow: hidden;">
+	<h2>ETCD Keeper v3</h2>
+	<form action="/v3/login" method="post" >
+		<input name="password" type="password">
+		<input type="submit" value="Login">
+	</form>
+</body>
+</html>
