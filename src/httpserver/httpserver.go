@@ -85,7 +85,7 @@ func main() {
 
 func setAuthCookie(w http.ResponseWriter) {
 	rand.Seed(time.Now().UnixNano())
-	verifyString = fmt.Sprintf("%4d%4d%4d", rand.Intn(9999), rand.Intn(9999), rand.Intn(9999))
+	verifyString = fmt.Sprintf("%04d%04d%04d", rand.Intn(9999), rand.Intn(9999), rand.Intn(9999))
 	cookie := http.Cookie{
 		Name:     "auth",
 		Value:    verifyString,
