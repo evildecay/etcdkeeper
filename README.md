@@ -1,26 +1,32 @@
 ## etcdkeeper
 * Lightweight etcd web client.
 * Support etcd 2.x and etcd 3.x.
-* Server using the grpc interface, the server needs to compile the package etcd clientv3.
+* The server uses the etcd go client interface, the server needs to compile the package etcd client and clientv3.
 * Based easyui framework to achieve(easyui license [easyui website](http://www.jeasyui.com)).
 
 ## Usage
-* Run httpserver.exe (windows version)
+* Run etcdkeeper.exe (windows version)
 * [Download other platform releases](https://github.com/evildecay/etcdkeeper/releases).
 ```
-  Usage of httpserver.exe:  
-  -h string  
-        host name or ip address (default: "127.0.0.1", the http server addreess, not etcd address)
+  Usage of etcdkeeper.exe:
+  -h string
+        host name or ip address (default: "0.0.0.0", the http server addreess, not etcd address)
   -p int
         port (default 8080)
-  -n string
-        name (default: request, etcdv2 need to be used)
   -sep string
         Separator (default "/")
+  -usetls
+        use tls (only v3)
+  -cacert string
+        verify certificates of TLS-enabled secure servers using this CA bundle (only v3)
+  -cert string
+        identify secure client using this TLS certificate file (only v3)
+  -key string
+        identify secure client using this TLS key file (only v3)
 ```
 * Open your browser and enter the address. 
-  - etcdv2: http://127.0.0.1:8080/etcdkeeper
-  - etcdv3: http://127.0.0.1:8080/etcdkeeper3
+  - http://127.0.0.1:8080/etcdkeeper
+* Click on the version of the title to select the version of ETCD. The default is V3. Reopening will remember your choice.
 * Right click on the tree node to add or delete.
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
@@ -37,10 +43,7 @@
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
 
 ## Screenshots
-### etcdv2
-![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/ui.png)
-### etcdv3
-![image](https://github.com/evildecay/etcdkeeper3/raw/master/screenshots/uiv3.png)
+![image](https://github.com/evildecay/etcdkeeper/blob/master/screenshots/ui.png)
 
 ## License
 MIT

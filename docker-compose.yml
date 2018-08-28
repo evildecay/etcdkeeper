@@ -1,0 +1,24 @@
+version: '3.5'
+
+services:
+  etcd:
+    image: "quay.io/coreos/etcd:v3.3"
+    container_name: "etcd"
+    environment:
+      ETCD_ADVERTISE_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCDCTL_API: "2"
+    ports:
+    - 2379:2379
+    - 2380:2380
+    - 4001:4001
+
+  etcdkeeper:
+    build: .
+    container_name: "etcdkeeper"
+    environment:
+      HOST: "0.0.0.0"
+    ports:
+    - 12000:8080
+    depends_on:
+    - etcd
