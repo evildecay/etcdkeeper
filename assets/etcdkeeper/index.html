@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>ETCD Keeper</title>
+	<title>ETCD Keeper v3</title>
 	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/metro/easyui.css">
 	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/icon.css">
 	<link rel="stylesheet" type="text/css" href="../framework/custom/css/style.css">
@@ -13,6 +13,7 @@
 	<script type="text/javascript" src="../framework/easyui/easyui-lang-zh_CN.js"></script>
 	<script type="text/javascript" src="../framework/jquery/jquery.json-2.2.js"></script>
 	<script type="text/javascript" src="../framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="../framework/js.cookie-2.1.4.min.js"></script>
 	<script type="text/javascript" src="../framework/ace/ace.js" charset="utf-8"></script>
 	<style>
 		#value {
@@ -27,9 +28,9 @@
 	</style>
 </head>
 <body style="overflow: hidden;">
-	<h2>ETCD Keeper</h2>
+	<h2>ETCD Keeper <span id="ver" style="border: 1px solid #D4D4D4;border-radius: 5px;cursor:pointer;">v3</span></h2>
 	<div class="noborder">
-		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'http://etcdhost:port/v2/keys',onChange:connect,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
+		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'127.0.0.1:2379',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
 	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
@@ -37,19 +38,19 @@
 			<ul id="etree" class="easyui-tree"></ul>
 		</div>
 		<div data-options="region:'center',tools:'#centerTools',footer:'#footer'" title="/" spellcheck="false" style="padding:10px;overflow:hidden;">
-			<!--pre style="height:100%;max-height:100%;overflow:auto;margin-top:0;" contentEditable=true></pre-->
-			<!--textarea id="value" class="easyui-textbox" name="value" data-options="multiline:true" style="width:100%;min-height:100%;"></textarea-->
 			<div id="value"></div>
 		</div>
 	</div>
 	
 	<div id="footer" style="padding:5px;color:#777;">&nbsp;</div>
 	<div id="westTools">
-		<a href="javascript:void(0)" class="icon-reload" onclick="reload();"></a>
+		<a href="javascript:void(0)" class="icon-path" style="margin-right:4px;" onclick="changeTreeMode();" title="Tree mode"></a>
+		<a href="javascript:void(0)" class="icon-reload" onclick="connect();" title="Refresh tree"></a>
 	</div>
 	<div id="centerTools">
 		<a href="javascript:void(0)" class="easyui-menubutton" style="width:60px;height:15px;" data-options="menu:'#modeMenu'">Mode</a>
-		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();"></a>
+		<a href="javascript:void(0)" class="icon-text" style="margin-right:4px;" onclick="format(aceMode);" title="Format content"></a>
+		<a href="javascript:void(0)" class="icon-save" onclick="saveValue();" title="Save content"></a>
 	</div>
 	<div id="treeDirMenu" class="easyui-menu" style="width:150px;">
 		<div onclick="$('#cnode').window('open')" data-options="iconCls:'icon-add'">Create Node</div>
@@ -100,7 +101,13 @@
 		<div id="mode_xml" onclick="changeMode('xml')">xml</div>
 		<div id="mode_lua" onclick="changeMode('lua')">lua</div>
 		<div id="mode_javascript" onclick="changeMode('javascript')">javascript</div>
+		<div id="mode_json" onclick="changeMode('json')">json</div>
 	</div>
+
+    <div id="versionMenu" class="easyui-menu">
+        <div id="version_3" onclick="selVersion('3')">version 3</div>
+        <div id="version_2" onclick="selVersion('2')">version 2</div>
+    </div>
 	
 	<script>
 		resizeWindow();
@@ -112,17 +119,84 @@
 			$('#elayout').height(($(window).height() - 128) + 'px')
 		}
 		
-		var serverBase = '/request?url=';
-		var etcdBase = 'http://127.0.0.1:2379/v2/keys';
+		var separator = '';
+		var serverBase = '/v3';
+		var etcdBase = Cookies.get('etcd-endpoint');
+		if(typeof(etcdBase) === 'undefined') {
+			etcdBase = '127.0.0.1:2379';
+		}
+
+        // version switch
+        var version = Cookies.get('etcd-version');
+        if(typeof(version) === 'undefined') {
+            version = '3';
+        }
+        setServerBase(version);
+        $(function(){
+            $('#ver').bind('click',function(e){
+                e.preventDefault();
+                $('#versionMenu').menu('show', {
+                    left: e.pageX,
+                    top: e.pageY
+                });
+            });
+        });
+        function selVersion(ver) {
+            setServerBase(ver);
+            version = ver;
+            connect();
+            Cookies.set('etcd-version', version, {expires: 30});
+        }
+        function setServerBase(ver) {
+            if (ver === '3') {
+                $('#ver').html('v3');
+                serverBase = '/v3'
+            } else {
+                $('#ver').html('v2');
+                serverBase = '/v2'
+            }
+        }
+
 		var tree = [];
 		var idCount = 0;
 		var editor = ace.edit('value');
-		var currentMode = 'mode_icon_text'
+		var curIconMode = 'mode_icon_text';
+		var aceMode = Cookies.get('ace-mode');
+		if (typeof(aceMode) === 'undefined') {
+			aceMode = 'text';
+		}
+		var treeMode = Cookies.get('tree-mode');
+		if (typeof(treeMode) === 'undefined') {
+			treeMode = 'list';
+		}
+		if (version === '2') {
+		    treeMode = 'path'
+		}
+		//var autoFormat = Cookies.get('auto-format');
+		//if(typeof(autoFormat) === 'undefined') {
+			//autoFormat = 'false';
+		//}
+		
+		// get separator
+		$.ajax({
+			type: 'GET',
+			timeout: 5000,
+			url:  serverBase + '/separator',
+			async: false,
+			dataType: 'text',
+			success: function(data) {
+				separator = data;
+				console.log(data);
+			},
+			error: function(err) {
+				$.messager.alert('Error', $.toJSON(err), 'error');
+			}
+		});
 		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
-			editor.getSession().setMode('ace/mode/text');
-			$('#mode_text').append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			editor.getSession().setMode('ace/mode/' + aceMode);
+			changeMode(aceMode);
 			init();
 		});
 		
@@ -134,103 +208,84 @@
 				//lines:true,
 				onContextMenu:showMenu
 			});
-			//queryAll();
-			//$("#etree").tree("loadData", tree);
 		}
 		
-		function connect(newValue, oldValue) {
-			if (newValue == '') {
+		function changeHost(newValue, oldValue) {
+			if (newValue === '') {
 				$.messager.alert('Error','ETCD address is empty.','error');
+			}else {
+				Cookies.set('etcd-endpoint', newValue, {expires: 30});
+				etcdBase = newValue;
+				connect();
 			}
-			etcdBase = newValue;
-			reload();
+		}
+		
+		function connect() {
+			var status = 'ok';
+			$.ajax({
+				type: 'POST',
+				timeout: 5000,
+				url:  serverBase + '/connect',
+				data: {'host': etcdBase},
+				async: false,
+				dataType: 'text',
+				success: function(data) {
+					if (data === 'ok') {
+						console.log('Connect etcd success.');
+						//alertMessage('Connect etcd success.');
+					}else if (data === 'running') {
+						console.log('etcd is running.');
+					}else {
+						$.messager.alert('Error', data, 'error');
+						status = 'error'
+					}
+				},
+				error: function(err) {
+					$.messager.alert('Error', $.toJSON(err), 'error');
+				}
+			});
+			
+			if (status === 'ok') {
+				reload();
+			}else {
+				resetValue();
+				$('#etree').tree('loadData', []);
+			}
 		}
 		
 		function reload() {
-			//queryAll();
 			var rootNode = {
 				id      : getId(),
 				children: [],
 				dir     : true,
-				path    : '/',
-				text    : '/',
+				path    : separator,
+				text    : separator,
 				iconCls : 'icon-dir'
 			};
-			
-			tree = []
-			tree.push(rootNode)
+			tree = [];
+			tree.push(rootNode);
 			$('#etree').tree('loadData', tree);
 			showNode($('#etree').tree('getRoot'));
 			resetValue();
 		}
 		
 		function resetValue() {
-			$('#elayout').layout('panel','center').panel('setTitle', '/');
+			$('#elayout').layout('panel','center').panel('setTitle', separator);
 			editor.getSession().setValue('');
-			editor.setReadOnly(true);
+			editor.setReadOnly(false);
 			$('#footer').html('&nbsp;');
 		}
-		
-		/*
-		function queryAll() {
-			tree = [];
-			$.ajax({
-				type: "GET",
-				timeout: 10000,
-				url:  serverBase + encodeURIComponent(etcdBase + "/?recursive=true&sorted=true"),
-				data: {},
-				async: false,
-				dataType: "json",
-				success: function(data) {
-					data.node.key = "/";
-					loopNodes(data.node, tree);
-				},
-				error: function(err) {
-					$.messager.alert('Error',$.toJSON(err),'error');
-				}
-			});
-		}
-		
-		function loopNodes(node, parent) {
-			var curNode = {};
-			curNode.id = getId();
-			curNode.children = [];
-			curNode.dir = false;
-			curNode.path = node.key;
-			curNode.iconCls = "icon-text";
-			if (node.key == "/") {
-				curNode.text = "/";
-			}else {
-				curNode.text = node.key.split("/").pop();
-			}
-			if (node.dir == true) {
-				curNode.state = "closed";
-				curNode.dir = true;
-				curNode.iconCls = "icon-dir";
-				if (node.nodes) {
-					for (var i in node.nodes) {
-						loopNodes(node.nodes[i], curNode);
-					}
-				}
-			}
-			if (node.key == "/") {
-				parent.push(curNode);
-			}else {
-				parent.children.push(curNode);
-			}
-		}
-		*/
 		
 		function showNode(node) {
 			$('#elayout').layout('panel','center').panel('setTitle', node.path);
 			editor.getSession().setValue('');
-			if (node.dir == false) {
+			if (node.dir === false) {
 				editor.setReadOnly(false);
 				$.ajax({
 					type: 'GET',
 					timeout: 5000,
-					url:  serverBase + etcdBase + node.path,
-					data: '',
+					url:  serverBase + '/get',
+					data: {'key': node.path},
 					async: true,
 					dataType: 'json',
 					success: function(data) {
@@ -239,76 +294,100 @@
 							resetValue()
 						}else {
 							editor.getSession().setValue(data.node.value);
+							//if (autoFormat === 'true') {
+								//format(aceMode);
+							//}
 							var ttl = 0;
 							if (data.node.ttl) {
 								ttl = data.node.ttl;
 							}
-							$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);							
+							changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
+							changeModeBySuffix(node.path);
+						}
+					},
+					error: function(err) {
+						$.messager.alert('Error',$.toJSON(err),'error');
+					}
+				});
+			} else {
+				if (node.children.length > 0) {
+					$('#etree').tree(node.state === 'closed' ? 'expand' : 'collapse', node.target);
+				}
+				if (version === '2') {
+                    editor.setReadOnly(true);
+                }
+
+				$('#footer').html('&nbsp;');
+				// clear child node
+				var children = $('#etree').tree('getChildren', node.target);
+				//if (node.state === 'closed' || children.length === 0) {
+					
+				//}
+				var url = '';
+				if (treeMode === 'list') {
+					url = serverBase + '/get';
+				} else {
+					url = serverBase + '/getpath';
+				}
+				$.ajax({
+					type: 'GET',
+					timeout: 5000,
+					url:  url,
+					data: {'key': node.path, 'prefix': 'true'},
+					async: true,
+					dataType: 'json',
+					success: function(data) {
+						if (data.errorCode) {
+							$.messager.alert('Error',data.errorCode,'error');
+						}else {
+							if (data.node.value) {
+								editor.getSession().setValue(data.node.value);
+								changeFooter(data.node.ttl, data.node.createdIndex, data.node.modifiedIndex);
+								changeModeBySuffix(node.path);
+							}
+							var arr = [];
+							
+							if (data.node.nodes) {									
+								// refresh child node
+								for (var i in data.node.nodes) {
+									var newData = getNode(data.node.nodes[i]);	
+									arr.push(newData);
+								}
+								$('#etree').tree('append', {
+									parent: node.target,
+									data: arr
+								});
+							}
+							
+							for(var n in children) {
+								$('#etree').tree('remove', children[n].target);
+							}
 						} 
 					},
 					error: function(err) {
 						$.messager.alert('Error',$.toJSON(err),'error');
 					}
 				});
-			}else {
-				if (node.children.length > 0) {
-					$('#etree').tree(node.state === 'closed' ? 'expand' : 'collapse', node.target);
-				}
-				editor.setReadOnly(true);
-				$('#footer').html('&nbsp;');
-				
-				// clear child node
-				var children = $('#etree').tree('getChildren', node.target)
-				if (node.state == 'closed' || children.length == 0) {
-					$.ajax({
-						type: 'GET',
-						timeout: 5000,
-						url:  serverBase + encodeURIComponent(etcdBase + node.path + '?recursive=true&sorted=true'),
-						data: '',
-						async: true,
-						dataType: 'json',
-						success: function(data) {
-							if (data.errorCode) {
-								return
-							}else {
-								var arr = [];
-								
-								if (data.node.nodes) {									
-									// refresh child node
-									for (var i in data.node.nodes) {
-										var newData = getNode(data.node.nodes[i]);	
-										arr.push(newData);
-									}
-									$('#etree').tree('append', {
-										parent: node.target,
-										data: arr
-									});
-								}
-								
-								for(var n in children) {
-									$('#etree').tree('remove', children[n].target);
-								}
-							} 
-						},
-						error: function(err) {
-							$.messager.alert('Error',$.toJSON(err),'error');
-						}
-					});
-				}
 			}
 		}
 		
 		function getNode(n) {
-			var path = n.key.split('/');
+			var text = '';
+			if (treeMode === 'list') {
+				text = n.key;
+			} else {
+				var path = n.key.split(separator);
+				text = path[path.length - 1];
+			}
 			var obj = {
 				id  :    getId(),
-				text:    path[path.length - 1],
+				text:    text,
 				dir:     false,
 				iconCls: 'icon-text',
 				path:    n.key,
 				children:[]
 			};
-			if (n.dir == true) {
+			if (n.dir === true) {
 				obj.state = 'closed';
 				obj.dir = true;
 				obj.iconCls = 'icon-dir';
@@ -325,9 +404,13 @@
 		function showMenu(e, node) {
 			e.preventDefault();
 			$('#etree').tree('select',node.target);
-			var mid = 'treeNodeMenu';
-			if (node.dir == true) {
+			var mid = "treeNodeMenu";
+			if (treeMode === 'path') {
 				mid = 'treeDirMenu';
+			} else {
+				if (node.dir === true) {
+					mid = 'treeDirMenu';
+				}
 			}
 			$('#' + mid).menu('show',{
 				left: e.pageX,
@@ -337,118 +420,176 @@
 		
 		function saveValue() {
 			var node = $('#etree').tree('getSelected');
-			if (!node.dir) {
-				$.ajax({
-					type: 'PUT',
-					timeout: 5000,
-					url:  serverBase + etcdBase + node.path,
-					data: {value:editor.getValue()},
-					async: true,
-					dataType: 'json',
-					success: function(data) {
-						editor.getSession().setValue(data.node.value);
-						var ttl = 0;
-						if (data.node.ttl) {
-							ttl = data.node.ttl;
-						}
-						$('#footer').html('TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CIndex&nbsp;:&nbsp;' + data.node.createdIndex + '&nbsp;&nbsp;&nbsp;&nbsp;MIndex&nbsp;:&nbsp;' + data.node.modifiedIndex);
-						alertMessage('Save success.');
-					},
-					error: function(err) {
-						$.messager.alert('Error',$.toJSON(err),'error');
+			$.ajax({
+				type: 'PUT',
+				timeout: 5000,
+				url:  serverBase + '/put',
+				data: {'key': node.path, 'value':editor.getValue()},
+				async: true,
+				dataType: 'json',
+				success: function(data) {
+					editor.getSession().setValue(data.node.value);
+					var ttl = 0;
+					if (data.node.ttl) {
+						ttl = data.node.ttl;
 					}
-				});
-			}
+					changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
+					alertMessage('Save success.');
+				},
+				error: function(err) {
+					$.messager.alert('Error',$.toJSON(err),'error');
+				}
+			});
 		}
 		
 		function createNode() {
 			var node = $('#etree').tree('getSelected');
 			var nodePath = node.path;
-			if (nodePath == '/') {
+			if (nodePath === separator) {
 				nodePath = ''
 			}
-			if ($('#cnodeForm').form('validate')) {
-				var pathArr = []
-				var inputArr = $('#name').textbox('getValue').split('/')
-				for (var i in inputArr) {
-					if ($.trim(inputArr[i]) != '') {
-						pathArr.push(inputArr[i])
+			
+			if (treeMode == 'list') {
+				if ($('#cnodeForm').form('validate')) {
+					var createNodePath = $('#name').textbox('getValue');
+					if (!createNodePath.startsWith(separator)) {
+						createNodePath= separator + $('#name').textbox('getValue');
 					}
-				}
-				$.ajax({
-					type: 'PUT',
-					timeout: 5000,
-					url:  serverBase + etcdBase + nodePath + '/' + pathArr.join('/'),
-					data: {dir:$('#dir').combobox('getValue'),value:$('#cvalue').textbox().val(),ttl:$('#ttl').numberbox().val()},
-					async: true,
-					dataType: 'text',
-					success: function(data) {
-						$('#cnode').window('close');
-						var ret = $.evalJSON(data);
-						if (ret.errorCode) {
-							$.messager.alert('Error', ret.cause + ' ' + ret.message, 'error');
-						}else {
-							alertMessage('Create success.');
-							var newData = [];
-							var preObj = {};
-							var prePath = node.path;
-							for (var k in pathArr) {
-								var obj = {};
-								if (k == pathArr.length - 1) {
-									obj = {
-										id  :    getId(),
-										text:    pathArr[k],
-										state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
-										dir:     $('#dir').combobox('getValue') == 'true'?true:false,
-										iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
-										path:    (prePath=='/'?(prePath + ''):(prePath + '/')) + pathArr[k],
-										children:[]
-									};
-								}else {
-									obj = {
-										id  :    getId(),
-										text:    pathArr[k],
-										state:   'closed',
-										dir:     true,
-										iconCls: 'icon-dir',
-										path:    (prePath=='/'?(prePath + ''):(prePath + '/')) + pathArr[k],
-										children:[]
-									};
-								}
-								var objNode = nodeExist(obj.path)
-								if (objNode != null) {
-									node = objNode;
-									prePath = node.path;
-									continue;
-								}
-								if (newData.length == 0) {
+					$.ajax({
+						type: 'PUT',
+						timeout: 5000,
+						url:  serverBase + '/put',
+						data: {'key':createNodePath,'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
+						async: true,
+						dataType: 'text',
+						success: function(data) {
+							$('#cnode').window('close');
+							var ret = $.evalJSON(data);
+							if (ret.errorCode) {
+								$.messager.alert('Error', ret.cause + " " + ret.message, 'error');
+							}else {
+								alertMessage('Create success.');
+								var newData = [];
+								var obj = {
+											id  :    getId(),
+											text:    createNodePath,
+											state:   $('#dir').combobox('getValue') === 'true'?'closed':'',
+											dir:     $('#dir').combobox('getValue') === 'true',
+											iconCls: $('#dir').combobox('getValue') === 'true'?'icon-dir':'icon-text',
+											path:    createNodePath,
+											children:[]
+										};
+								var objNode = nodeExist(obj.path);
+								if (objNode === null) {
 									newData.push(obj);
-								}else {
-									preObj.children.push(obj);
+								
+									$('#etree').tree('append', {
+										parent: node.target,
+										data: newData
+									});
 								}
-								preObj = obj;
-								prePath = obj.path;
+								
 							}
-							$('#etree').tree('append', {
-								parent: node.target,
-								data: newData
-							});
+							$('#cvalue').textbox('enable','none');
+							$('#cnodeForm').form('reset');
+							$('#ttl').numberbox('setValue', '');
+						},
+						error: function(err) {
+							$.messager.alert('Error', err, 'error');
 						}
-						$('#cvalue').textbox('enable','none');
-						$('#cnodeForm').form('reset');
-						$('#ttl').numberbox('setValue', '');
-					},
-					error: function(err) {
-						$.messager.alert('Error', err, 'error');
+					});
+				}
+			} else {
+				if ($('#cnodeForm').form('validate')) {
+					var pathArr = [];
+					var inputArr = $('#name').textbox('getValue').split(separator);
+					for (var i in inputArr) {
+						if ($.trim(inputArr[i]) != '') {
+							pathArr.push(inputArr[i])
+						}
 					}
-				});
+					
+					$.ajax({
+						type: 'PUT',
+						timeout: 5000,
+						url:  serverBase + '/put',
+						data: {dir:$('#dir').combobox('getValue'),'key':nodePath + separator + pathArr.join(separator),'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
+						async: true,
+						dataType: 'text',
+						success: function(data) {
+							$('#cnode').window('close');
+							var ret = $.evalJSON(data);
+							if (ret.errorCode) {
+								$.messager.alert('Error', ret.cause + ' ' + ret.message, 'error');
+							}else {
+								alertMessage('Create success.');
+								var newData = [];
+								var preObj = {};
+								var prePath = node.path;
+								for (var k in pathArr) {
+									var obj = {};
+									if (k == pathArr.length - 1) {
+										obj = {
+											id  :    getId(),
+											text:    pathArr[k],
+											state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
+											dir:     $('#dir').combobox('getValue') == 'true'?true:false,
+											iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
+											path:    (prePath==separator?(prePath + ''):(prePath + separator)) + pathArr[k],
+											children:[]
+										};
+									}else {
+										obj = {
+											id  :    getId(),
+											text:    pathArr[k],
+											state:   'closed',
+											dir:     true,
+											iconCls: 'icon-dir',
+											path:    (prePath==separator?(prePath + ''):(prePath + separator)) + pathArr[k],
+											children:[]
+										};
+									}
+									var objNode = nodeExist(obj.path);
+									if (objNode != null) {
+										node = objNode;
+										prePath = node.path;
+										continue;
+									}
+									if (newData.length == 0) {
+										newData.push(obj);
+									}else {
+										preObj.children.push(obj);
+									}
+									preObj = obj;
+									prePath = obj.path;
+								}
+								
+								$('#etree').tree('update', {
+									target: node.target,
+									iconCls: 'icon-dir'
+								});
+								$('#etree').tree('append', {
+									parent: node.target,
+									data: newData
+								});
+							}
+							
+							$('#cvalue').textbox('enable','none');
+							$('#cnodeForm').form('reset');
+							$('#ttl').numberbox('setValue', '');
+						},
+						error: function(err) {
+							$.messager.alert('Error', err, 'error');
+						}
+					});
+				}
 			}
 		}
 		
 		function nodeExist(p) {
 			for (var i=0;i<=idCount;i++) {
 				var node = $('#etree').tree('find', i);
-				if (node != null && node.path == p) {
+				if (node !== null && node.path === p) {
 					return node;
 				}
 			}
@@ -460,19 +601,34 @@
 			$.messager.confirm('Confirm', 'Remove ' + node.text + '?', function(r){
 				if (r){
 					$.ajax({
-						type: 'DELETE',
+						type: 'POST',
 						timeout: 5000,
-						url:  serverBase + etcdBase + node.path + '?recursive=true',
-						data: {},
+						url:  serverBase + '/delete',
+						data: {'key': node.path, 'dir':node.dir},
 						async: true,
 						dataType: 'text',
 						success: function(data) {
 							resetValue();
-							alertMessage('Delete success.');
-							$('#etree').tree('remove', node.target);
+							if (data === 'ok') {
+								alertMessage('Delete success.');
+								
+								var pnode = $('#etree').tree('getParent', node.target);
+								
+								$('#etree').tree('remove', node.target);
+								
+								var isLeaf = $('#etree').tree('isLeaf', pnode.target);
+								if (isLeaf) {
+									$('#etree').tree('update', {
+										target: pnode.target,
+										iconCls: 'icon-text'
+									});
+								}
+							}else {
+								$.messager.alert('Error', data, 'error');
+							}
 						},
 						error: function(err) {
-							$.messager.alert('Error',err,'error');
+							$.messager.alert('Error', $.toJSON(err), 'error');
 						}
 					});
 				}
@@ -480,7 +636,7 @@
 		}
 		
 		function selDir(item) {
-			if (item.value == 'true') {
+			if (item.value === 'true') {
 				$('#cvalue').textbox('disable','none');
 			}else {
 				$('#cvalue').textbox('enable','none');
@@ -505,10 +661,58 @@
 		}
 		
 		function changeMode(mode) {
-			$('#' + currentMode).remove();
-			editor.getSession().setMode('ace/mode/' + mode);
-			currentMode = 'mode_icon_' + mode
-			$('#mode_' + mode).append('<div id="' + currentMode + '" class="menu-icon icon-ok"></div>');
+			aceMode = mode;
+			Cookies.set('ace-mode', aceMode, {expires: 30});
+			$('#' + curIconMode).remove();
+			editor.getSession().setMode('ace/mode/' + aceMode);
+			curIconMode = 'mode_icon_' + aceMode;
+			$('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
+			$('#showMode').html(aceMode);
+		}
+		
+		function changeFooter(ttl, cIndex, mIndex) {
+			$('#footer').html('<span>TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CreateRevision&nbsp;:&nbsp;' + cIndex + '&nbsp;&nbsp;&nbsp;&nbsp;ModRevision&nbsp;:&nbsp;' + mIndex + '</span><span id="showMode" style="position: absolute;right: 10px;color: #777;">' + aceMode + '</span>');
+		}
+
+		function format(type) {
+			if (type === 'json') {
+				val = JSON.parse(editor.getValue());
+				editor.setValue(JSON.stringify(val, null, 4));
+				editor.getSession().setMode('ace/mode/' + 'json');
+				editor.clearSelection();
+				editor.navigateFileStart();
+			}
+		}
+		
+		function changeTreeMode() {
+		    if (version === '2') {
+		        treeMode = 'path';
+			} else {
+                if (treeMode === 'list') {
+                    treeMode = 'path';
+                } else {
+                    treeMode = 'list';
+                }
+                Cookies.set('tree-mode', treeMode, {expires: 30});
+                connect();
+			}
+		}
+		
+		function changeModeBySuffix(path) {
+			var a = path.split(separator);
+			var tokens = a.slice(a.length-1,a.lenght)[0].split('.');
+			if (tokens.length < 2) {
+				return
+			}
+			var mode = tokens[tokens.length-1]
+			var modes = $('#modeMenu').children();
+			for (var i=0;i<modes.length;i++) {
+				m = modes[i].innerText;
+				if (mode === m) {
+					changeMode(m);
+					return
+				}
+			}
 		}
 	</script>
 </body>
