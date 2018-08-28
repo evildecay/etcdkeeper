@@ -146,14 +146,27 @@
             version = ver;
             connect();
             Cookies.set('etcd-version', version, {expires: 30});
+
+            $('#versionMenu').menu('setIcon', {
+                target: $('#version_2')[0],
+                iconCls: ''
+            });
+            $('#versionMenu').menu('setIcon', {
+                target: $('#version_3')[0],
+                iconCls: ''
+            });
+            $('#versionMenu').menu('setIcon', {
+                target: $('#version_' + ver)[0],
+                iconCls: 'icon-ok'
+            });
         }
         function setServerBase(ver) {
             if (ver === '3') {
                 $('#ver').html('v3');
-                serverBase = '/v3'
+                serverBase = '/v3';
             } else {
                 $('#ver').html('v2');
-                serverBase = '/v2'
+                serverBase = '/v2';
             }
         }
 
@@ -199,6 +212,10 @@
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			changeMode(aceMode);
 			init();
+            $('#versionMenu').menu('setIcon', {
+                target: $('#version_' + version)[0],
+                iconCls: 'icon-ok'
+            });
 		});
 		
 		function init() {
