@@ -1,24 +1,25 @@
 package main
 
-import(
+import (
+	"context"
+	"crypto/tls"
+	"encoding/json"
+	"flag"
+	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"io/ioutil"
+	"strconv"
 	"strings"
 	"time"
-	"flag"
-	"strconv"
-	"encoding/json"
-	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
-	"github.com/coreos/etcd/pkg/transport"
-	"crypto/tls"
 )
 
 var (
-	cli       *clientv3.Client
+	cli       *clientv3.Client // v3 client
+	kapi      client.KeysAPI   // v2 client
 	sep       = flag.String("sep", "/", "separator")
 	separator = ""
 	usetls    = flag.Bool("usetls", false, "use tls")
@@ -30,22 +31,29 @@ var (
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
 	port := flag.Int("p", 8080, "port")
-	name := flag.String("n", "/request", "request root name for etcdv2")
+	//name := flag.String("n", "/request", "request root name for etcdv2")
 
 	flag.CommandLine.Parse(os.Args[1:])
 	separator = *sep
 
 	// v2
-	http.HandleFunc(*name, v2request)
+	//http.HandleFunc(*name, v2request)
+	http.HandleFunc("/v2/separator", getSeparator)
+	http.HandleFunc("/v2/connect", connectV2)
+	http.HandleFunc("/v2/put", putV2)
+	http.HandleFunc("/v2/get", getV2)
+	http.HandleFunc("/v2/delete", delV2)
+	// dirctory mode
+	http.HandleFunc("/v2/getpath", getPathV2)
 
 	// v3
-	http.HandleFunc("/separator", getSeparator)
-	http.HandleFunc("/connect", connect)
-	http.HandleFunc("/put", put)
-	http.HandleFunc("/get", get)
-	http.HandleFunc("/delete", del)
+	http.HandleFunc("/v3/separator", getSeparator)
+	http.HandleFunc("/v3/connect", connect)
+	http.HandleFunc("/v3/put", put)
+	http.HandleFunc("/v3/get", get)
+	http.HandleFunc("/v3/delete", del)
 	// dirctory mode
-	http.HandleFunc("/getpath", getPath)
+	http.HandleFunc("/v3/getpath", getPath)
 
 	wd, err := os.Getwd()
 	if err != nil{
@@ -63,33 +71,177 @@ func main() {
 	}
 }
 
-func v2request(w http.ResponseWriter, r *http.Request){
-	if err := r.ParseForm(); err != nil {
-		log.Println(err.Error())
-	}
-	log.Println(r.Method, "v2", r.FormValue("url"), r.PostForm.Encode())
+//func v2request(w http.ResponseWriter, r *http.Request){
+//	if err := r.ParseForm(); err != nil {
+//		log.Println(err.Error())
+//	}
+//	log.Println(r.Method, "v2", r.FormValue("url"), r.PostForm.Encode())
+//
+//	body := strings.NewReader(r.PostForm.Encode())
+//	req, err := http.NewRequest(r.Method, r.Form.Get("url"), body)
+//	if err != nil {
+//		io.WriteString(w, err.Error())
+//		return
+//	}
+//	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+//	client := &http.Client{Timeout: 10*time.Second} // important!!!
+//	resp, err := client.Do(req)
+//	if err != nil {
+//		io.WriteString(w, err.Error())
+//	}else {
+//		result, err := ioutil.ReadAll(resp.Body)
+//		if err != nil {
+//			io.WriteString(w, "Get data failed: " + err.Error())
+//		} else {
+//			io.WriteString(w, string(result))
+//		}
+//	}
+//}
 
-	body := strings.NewReader(r.PostForm.Encode())
-	req, err := http.NewRequest(r.Method, r.Form.Get("url"), body)
-	if err != nil {
-		io.WriteString(w, err.Error())
-		return
+// v2 api
+func connectV2(w http.ResponseWriter, r *http.Request) {
+	host := strings.TrimSpace(r.FormValue("host"))
+	if !strings.HasPrefix(host, "http") {
+		host = "http://" + host
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{Timeout: 10*time.Second} // important!!!
-	resp, err := client.Do(req)
+	endpoints := []string{host}
+
+	cfg := client.Config{
+		Endpoints:               endpoints,
+		HeaderTimeoutPerRequest: 5*time.Second,
+		//Username:"test",
+		//Password:"test",
+	}
+
+	c, err := client.New(cfg)
 	if err != nil {
-		io.WriteString(w, err.Error())
-	}else {
-		result, err := ioutil.ReadAll(resp.Body)
+		log.Println(r.Method, "v2", "connect fail.")
+		io.WriteString(w, string(err.Error()))
+	} else {
+		kapi = client.NewKeysAPI(c)
+		log.Println(r.Method, "v2", "connect success.")
+		io.WriteString(w, "ok")
+	}
+}
+
+func putV2(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("key")
+	value := r.FormValue("value")
+	ttl := r.FormValue("ttl")
+	dir := r.FormValue("dir")
+	log.Println("PUT", "v2", key)
+
+	var isDir bool
+	if dir != "" {
+		isDir, _ = strconv.ParseBool(dir)
+	}
+	var err error
+	data := make(map[string]interface{})
+	if ttl != "" {
+		var sec int64
+		sec, err = strconv.ParseInt(ttl, 10, 64)
 		if err != nil {
-			io.WriteString(w, "Get data failed: " + err.Error())
+			log.Println(err.Error())
+		}
+		_, err = kapi.Set(context.Background(), key, value, &client.SetOptions{TTL:time.Duration(sec), Dir:isDir})
+	} else {
+		_, err = kapi.Set(context.Background(), key, value, &client.SetOptions{Dir:isDir})
+	}
+	if err != nil {
+		io.WriteString(w, string(err.Error()))
+	} else {
+
+		if resp, err := kapi.Get(context.Background(), key, &client.GetOptions{Recursive:true, Sort:true}); err != nil {
+			data["errorCode"] = err.Error()
 		} else {
-			io.WriteString(w, string(result))
+			if resp.Node != nil {
+				node := make(map[string]interface{})
+				node["key"] = resp.Node.Key
+				node["value"] = resp.Node.Value
+				node["dir"] = resp.Node.Dir
+				node["ttl"] = resp.Node.TTL
+				node["createdIndex"] = resp.Node.CreatedIndex
+				node["modifiedIndex"] = resp.Node.ModifiedIndex
+				data["node"] = node
+			}
+		}
+		var dataByte []byte
+		if dataByte, err = json.Marshal(data);err != nil {
+			io.WriteString(w, err.Error())
+		} else {
+			io.WriteString(w, string(dataByte))
 		}
 	}
 }
 
+func getV2(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("key")
+	data := make(map[string]interface{})
+	log.Println("GET", "v2", key)
+
+	if resp, err := kapi.Get(context.Background(), key, &client.GetOptions{Recursive:true, Sort:true}); err != nil {
+		data["errorCode"] = err.Error()
+	} else {
+		if resp.Node == nil {
+			data["errorCode"] = "The node does not exist."
+		} else {
+			data["node"] = getNode(resp.Node)
+		}
+	}
+	var dataByte []byte
+	var err error
+	if dataByte, err = json.Marshal(data);err != nil {
+		io.WriteString(w, err.Error())
+	} else {
+		io.WriteString(w, string(dataByte))
+	}
+}
+
+func getNode(node *client.Node) map[string]interface{} {
+	nm := make(map[string]interface{})
+	nm["key"] = node.Key
+	nm["value"] = node.Value
+	nm["dir"] = node.Dir
+	nm["ttl"] = node.TTL
+	nm["createdIndex"] = node.CreatedIndex
+	nm["modifiedIndex"] = node.ModifiedIndex
+	nm["nodes"] = make([]map[string]interface{}, 0)
+	if len(node.Nodes) != 0 {
+		for _, n := range node.Nodes {
+			nm["nodes"] = append(nm["nodes"].([]map[string]interface{}), getNode(n))
+		}
+	}
+	return nm
+}
+
+func delV2(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("key")
+	dir := r.FormValue("dir")
+	log.Println("DELETE", "v2", key)
+
+	isDir, _ := strconv.ParseBool(dir)
+	if isDir {
+		if _, err := kapi.Delete(context.Background(), key, &client.DeleteOptions{Recursive:true, Dir:true}); err != nil {
+			io.WriteString(w, err.Error())
+			return
+		}
+	} else {
+		if _, err := kapi.Delete(context.Background(), key, nil); err != nil {
+			io.WriteString(w, err.Error())
+			return
+		}
+	}
+
+	io.WriteString(w, "ok")
+}
+
+func getPathV2(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("key")
+	log.Println("GET", "v2", key)
+	getV2(w, r)
+}
+
+// v3 api
 func connect(w http.ResponseWriter, r *http.Request) {
 	if cli != nil {
 		etcdHost := cli.Endpoints()[0]
