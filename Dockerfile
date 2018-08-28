@@ -19,6 +19,8 @@ ENV PORT="8080"
 
 RUN apk add --no-cache ca-certificates
 
+RUN apk add --no-cache ca-certificates
+
 WORKDIR /etcdkeeper
 COPY --from=builder /go/src/github.com/evildecay/etcdkeeper/etcdkeeper.bin .
 ADD assets assets
