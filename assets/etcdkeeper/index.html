@@ -706,6 +706,7 @@
 		function changeTreeMode() {
 		    if (version === '2') {
 		        treeMode = 'path';
+                alertMessage('Etcd v2 only supports directory mode.');
 			} else {
                 if (treeMode === 'list') {
                     treeMode = 'path';
