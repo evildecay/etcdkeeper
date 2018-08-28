@@ -160,6 +160,7 @@
 		var tree = [];
 		var idCount = 0;
 		var editor = ace.edit('value');
+        editor.$blockScrolling = Infinity;
 		var curIconMode = 'mode_icon_text';
 		var aceMode = Cookies.get('ace-mode');
 		if (typeof(aceMode) === 'undefined') {
@@ -291,6 +292,7 @@
 					success: function(data) {
 						if (data.errorCode) {
 							$('#etree').tree('remove', node.target);
+							console.log(data.errorCode);
 							resetValue()
 						}else {
 							editor.getSession().setValue(data.node.value);

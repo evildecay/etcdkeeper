@@ -143,14 +143,13 @@ func putV2(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println(err.Error())
 		}
-		_, err = kapi.Set(context.Background(), key, value, &client.SetOptions{TTL:time.Duration(sec), Dir:isDir})
+		_, err = kapi.Set(context.Background(), key, value, &client.SetOptions{TTL:time.Duration(sec)*time.Second, Dir:isDir})
 	} else {
 		_, err = kapi.Set(context.Background(), key, value, &client.SetOptions{Dir:isDir})
 	}
 	if err != nil {
 		io.WriteString(w, string(err.Error()))
 	} else {
-
 		if resp, err := kapi.Get(context.Background(), key, &client.GetOptions{Recursive:true, Sort:true}); err != nil {
 			data["errorCode"] = err.Error()
 		} else {
