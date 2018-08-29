@@ -42,7 +42,7 @@
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
 
 ## Screenshots
-![image](https://github.com/evildecay/etcdkeeper/blob/master/screenshots/ui.png)
+![image](https://github.com/evildecay/etcdkeeper/blob/master/screenshots/ui.gif)
 
 ## License
 MIT
