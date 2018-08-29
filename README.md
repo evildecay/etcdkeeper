@@ -1,7 +1,7 @@
 ## etcdkeeper
 * Lightweight etcd web client.
 * Support etcd 2.x and etcd 3.x.
-* The server uses the etcd go client interface, the server needs to compile the package etcd client and clientv3.
+* The server uses the etcd go client interface, and the server compiles with the etcd client package.
 * Based easyui framework to achieve(easyui license [easyui website](http://www.jeasyui.com)).
 
 ## Usage
@@ -24,15 +24,14 @@
   -key string
         identify secure client using this TLS key file (only v3)
 ```
-* Open your browser and enter the address. 
-  - http://127.0.0.1:8080/etcdkeeper
+* Open your browser and enter the address: http://127.0.0.1:8080/etcdkeeper
 * Click on the version of the title to select the version of ETCD. The default is V3. Reopening will remember your choice.
 * Right click on the tree node to add or delete.
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
 ## Features
 * Etcd client view, Add, update or delete nodes.
-* Content edits use the ace editor[(Ace editor)](https://ace.c9.io). Support toml,ini,yaml,json,xml and so on to highlight view.
+* Content edits use the ace editor([Ace editor](https://ace.c9.io)). Support toml,ini,yaml,json,xml and so on to highlight view.
 * Content format. (Currently only support json, Other types can be extended later) Thanks jim3ma for his contribution.[@jim3ma]( https://github.com/jim3ma)
 
 ## Future Features
