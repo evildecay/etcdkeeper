@@ -426,6 +426,11 @@
 			var mid = "treeNodeMenu";
 			if (treeMode === 'path') {
 				mid = 'treeDirMenu';
+				if (version === '2') {
+                    if (node.dir !== true) {
+                        mid = "treeNodeMenu";
+                    }
+				}
 			} else {
 				if (node.dir === true) {
 					mid = 'treeDirMenu';
