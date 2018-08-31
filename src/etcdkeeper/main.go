@@ -148,7 +148,8 @@ func putV2(w http.ResponseWriter, r *http.Request) {
 		_, err = kapi.Set(context.Background(), key, value, &client.SetOptions{Dir:isDir})
 	}
 	if err != nil {
-		io.WriteString(w, string(err.Error()))
+		data["errorCode"] = 500
+		data["message"] = err.Error()
 	} else {
 		if resp, err := kapi.Get(context.Background(), key, &client.GetOptions{Recursive:true, Sort:true}); err != nil {
 			data["errorCode"] = err.Error()
@@ -164,12 +165,13 @@ func putV2(w http.ResponseWriter, r *http.Request) {
 				data["node"] = node
 			}
 		}
-		var dataByte []byte
-		if dataByte, err = json.Marshal(data);err != nil {
-			io.WriteString(w, err.Error())
-		} else {
-			io.WriteString(w, string(dataByte))
-		}
+	}
+
+	var dataByte []byte
+	if dataByte, err = json.Marshal(data);err != nil {
+		io.WriteString(w, err.Error())
+	} else {
+		io.WriteString(w, string(dataByte))
 	}
 }
 
@@ -179,10 +181,12 @@ func getV2(w http.ResponseWriter, r *http.Request) {
 	log.Println("GET", "v2", key)
 
 	if resp, err := kapi.Get(context.Background(), key, &client.GetOptions{Recursive:true, Sort:true}); err != nil {
-		data["errorCode"] = err.Error()
+		data["errorCode"] = 500
+		data["message"] = err.Error()
 	} else {
 		if resp.Node == nil {
-			data["errorCode"] = "The node does not exist."
+			data["errorCode"] = 500
+			data["message"] = "The node does not exist."
 		} else {
 			data["node"] = getNode(resp.Node)
 		}
@@ -310,7 +314,8 @@ func put(w http.ResponseWriter, r *http.Request) {
 		_, err = cli.Put(context.Background(), key, value)
 	}
 	if err != nil {
-		io.WriteString(w, string(err.Error()))
+		data["errorCode"] = 500
+		data["message"] = err.Error()
 	} else {
 		if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
 			data["errorCode"] = err.Error()
@@ -327,12 +332,13 @@ func put(w http.ResponseWriter, r *http.Request) {
 				data["node"] = node
 			}
 		}
-		var dataByte []byte
-		if dataByte, err = json.Marshal(data);err != nil {
-			io.WriteString(w, err.Error())
-		} else {
-			io.WriteString(w, string(dataByte))
-		}
+	}
+
+	var dataByte []byte
+	if dataByte, err = json.Marshal(data);err != nil {
+		io.WriteString(w, err.Error())
+	} else {
+		io.WriteString(w, string(dataByte))
 	}
 }
 
@@ -342,7 +348,8 @@ func get(w http.ResponseWriter, r *http.Request) {
 	log.Println("GET", "v3", key)
 
 	if resp, err := cli.Get(context.Background(), key, clientv3.WithPrefix());err != nil {
-		data["errorCode"] = err.Error()
+		data["errorCode"] = 500
+		data["message"] = err.Error()
 	} else {
 		if r.FormValue("prefix") == "true" {
 			pnode := make(map[string]interface{})
@@ -376,7 +383,8 @@ func get(w http.ResponseWriter, r *http.Request) {
 				node["modifiedIndex"] = kv.ModRevision
 				data["node"] = node
 			} else {
-				data["errorCode"] = "The node does not exist."
+				data["errorCode"] = 500
+				data["message"] = "The node does not exist."
 			}
 		}
 	}
@@ -405,12 +413,10 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 	// parent
 	presp, err := cli.Get(context.Background(), key)
 	if err != nil {
-		data["errorCode"] = err.Error()
-		if dataByte, err := json.Marshal(data);err != nil {
-			io.WriteString(w, err.Error())
-		} else {
-			io.WriteString(w, string(dataByte))
-		}
+		data["errorCode"] = 500
+		data["message"] = err.Error()
+		dataByte, _ := json.Marshal(data)
+		io.WriteString(w, string(dataByte))
 		return
 	}
 	if key == separator {
@@ -433,12 +439,10 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 	//child
 	resp, err := cli.Get(context.Background(), prefixKey, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 	if err != nil {
-		data["errorCode"] = err.Error()
-		if dataByte, err := json.Marshal(data);err != nil {
-			io.WriteString(w, err.Error())
-		} else {
-			io.WriteString(w, string(dataByte))
-		}
+		data["errorCode"] = 500
+		data["message"] = err.Error()
+		dataByte, _ := json.Marshal(data)
+		io.WriteString(w, string(dataByte))
 		return
 	}
 

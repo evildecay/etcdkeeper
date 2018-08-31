@@ -62,7 +62,7 @@
 	
 	<div id="cnode" class="easyui-window" title="Create node" data-options="modal:true,closed:true" style="width:650px;height:480px;padding:10px;">
 		<div style="padding:10px 40px 20px 40px">
-	    <form id="cnodeForm" method="put">
+	    <form id="cnodeForm">
 	    	<table cellpadding="10">
 	    		<tr>
 	    			<td>Name:</td>
@@ -309,9 +309,9 @@
 					success: function(data) {
 						if (data.errorCode) {
 							$('#etree').tree('remove', node.target);
-							console.log(data.errorCode);
+							console.log(data.message);
 							resetValue()
-						}else {
+						} else {
 							editor.getSession().setValue(data.node.value);
 							//if (autoFormat === 'true') {
 								//format(aceMode);
@@ -357,8 +357,8 @@
 					dataType: 'json',
 					success: function(data) {
 						if (data.errorCode) {
-							$.messager.alert('Error',data.errorCode,'error');
-						}else {
+							$.messager.alert('Error', data.message, 'error');
+						} else {
 							if (data.node.value) {
 								editor.getSession().setValue(data.node.value);
 								changeFooter(data.node.ttl, data.node.createdIndex, data.node.modifiedIndex);
@@ -473,7 +473,7 @@
 				nodePath = ''
 			}
 			
-			if (treeMode == 'list') {
+			if (treeMode == 'list') { // list mode
 				if ($('#cnodeForm').form('validate')) {
 					var createNodePath = $('#name').textbox('getValue');
 					if (!createNodePath.startsWith(separator)) {
@@ -490,7 +490,7 @@
 							$('#cnode').window('close');
 							var ret = $.evalJSON(data);
 							if (ret.errorCode) {
-								$.messager.alert('Error', ret.cause + " " + ret.message, 'error');
+								$.messager.alert('Error', ret.message, 'error');
 							}else {
 								alertMessage('Create success.');
 								var newData = [];
@@ -512,7 +512,6 @@
 										data: newData
 									});
 								}
-								
 							}
 							$('#cvalue').textbox('enable','none');
 							$('#cnodeForm').form('reset');
@@ -523,13 +522,13 @@
 						}
 					});
 				}
-			} else {
+			} else { // dir mode
 				if ($('#cnodeForm').form('validate')) {
 					var pathArr = [];
 					var inputArr = $('#name').textbox('getValue').split(separator);
 					for (var i in inputArr) {
 						if ($.trim(inputArr[i]) != '') {
-							pathArr.push(inputArr[i])
+							pathArr.push(inputArr[i]);
 						}
 					}
 					
@@ -544,7 +543,7 @@
 							$('#cnode').window('close');
 							var ret = $.evalJSON(data);
 							if (ret.errorCode) {
-								$.messager.alert('Error', ret.cause + ' ' + ret.message, 'error');
+								$.messager.alert('Error', ret.message, 'error');
 							}else {
 								alertMessage('Create success.');
 								var newData = [];
@@ -556,13 +555,13 @@
 										obj = {
 											id  :    getId(),
 											text:    pathArr[k],
-											state:   $('#dir').combobox('getValue') == 'true'?'closed':'',
+											state:   $('#dir').combobox('getValue') == 'true'?'open':'',
 											dir:     $('#dir').combobox('getValue') == 'true'?true:false,
 											iconCls: $('#dir').combobox('getValue') == 'true'?'icon-dir':'icon-text',
 											path:    (prePath==separator?(prePath + ''):(prePath + separator)) + pathArr[k],
 											children:[]
 										};
-									}else {
+									} else {
 										obj = {
 											id  :    getId(),
 											text:    pathArr[k],
@@ -574,25 +573,26 @@
 										};
 									}
 									var objNode = nodeExist(obj.path);
-									if (objNode != null) {
-										node = objNode;
-										prePath = node.path;
-										continue;
-									}
-									if (newData.length == 0) {
+                                    if (objNode != null) {
+                                        node = objNode;
+                                        prePath = node.path;
+                                        continue;
+                                    }
+									if (newData.length === 0) {
 										newData.push(obj);
-									}else {
+									} else {
 										preObj.children.push(obj);
 									}
 									preObj = obj;
 									prePath = obj.path;
 								}
-								
-								$('#etree').tree('update', {
-									target: node.target,
-									iconCls: 'icon-dir'
-								});
-								$('#etree').tree('append', {
+								if (version === '3') {
+                                    $('#etree').tree('update', {
+                                        target: node.target,
+                                        iconCls: 'icon-dir'
+                                    });
+								}
+                                $('#etree').tree('append', {
 									parent: node.target,
 									data: newData
 								});
@@ -639,15 +639,17 @@
 								var pnode = $('#etree').tree('getParent', node.target);
 								
 								$('#etree').tree('remove', node.target);
-								
-								var isLeaf = $('#etree').tree('isLeaf', pnode.target);
-								if (isLeaf) {
-									$('#etree').tree('update', {
-										target: pnode.target,
-										iconCls: 'icon-text'
-									});
+
+								if (version === '3') {
+                                    var isLeaf = $('#etree').tree('isLeaf', pnode.target);
+                                    if (isLeaf && pnode.text !== separator) {
+                                        $('#etree').tree('update', {
+                                            target: pnode.target,
+                                            iconCls: 'icon-text'
+                                        });
+                                    }
 								}
-							}else {
+							} else {
 								$.messager.alert('Error', data, 'error');
 							}
 						},
@@ -729,7 +731,7 @@
 			if (tokens.length < 2) {
 				return
 			}
-			var mode = tokens[tokens.length-1]
+			var mode = tokens[tokens.length-1];
 			var modes = $('#modeMenu').children();
 			for (var i=0;i<modes.length;i++) {
 				m = modes[i].innerText;
