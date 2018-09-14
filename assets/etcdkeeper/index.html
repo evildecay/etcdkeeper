@@ -63,34 +63,34 @@
 	
 	<div id="cnode" class="easyui-window" title="Create node" data-options="modal:true,closed:true" style="width:650px;height:480px;padding:10px;">
 		<div style="padding:10px 40px 20px 40px">
-	    <form id="cnodeForm">
-	    	<table cellpadding="10">
-	    		<tr>
-	    			<td>Name:</td>
-	    			<td><input id="name" class="easyui-textbox" type="text" name="name" data-options="required:true" style="width:450px;"/></td>
-	    		</tr>
-				<tr>
-	    			<td>Dir:</td>
-	    			<td>
-	    				<select id="dir" class="easyui-combobox" name="dir" data-options="panelHeight:'auto',onSelect:selDir" style="width:70px;">
-							<option value="true">TRUE</option>
-							<option value="false" selected="selected">FALSE</option>
-						</select>
-	    			</td>
-	    		</tr>
-				<tr>
-	    			<td>TTL:</td>
-	    			<td><input id="ttl" class="easyui-numberbox" type="text" name="ttl" data-options="" style="width:450px;"/></td>
-	    		</tr>
-	    		<tr>
-	    			<td>Value:</td>
-	    			<td spellcheck="false"><textarea id="cvalue" class="easyui-textbox" name="value" data-options="multiline:true" style="width:450px;height:200px"></textarea></td>
-	    		</tr>
-	    	</table>
-	    </form>
-	    <div style="text-align:center;padding:5px">
-	    	<a href="javascript:void(0)" class="easyui-linkbutton" onclick="createNode()">Submit</a>
-	    </div>
+			<form id="cnodeForm">
+				<table cellpadding="10">
+					<tr>
+						<td>Name:</td>
+						<td><input id="name" class="easyui-textbox" type="text" name="name" data-options="required:true" style="width:450px;"/></td>
+					</tr>
+					<tr>
+						<td>Dir:</td>
+						<td>
+							<select id="dir" class="easyui-combobox" name="dir" data-options="panelHeight:'auto',onSelect:selDir" style="width:70px;">
+								<option value="true">TRUE</option>
+								<option value="false" selected="selected">FALSE</option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<td>TTL:</td>
+						<td><input id="ttl" class="easyui-numberbox" type="text" name="ttl" data-options="" style="width:450px;"/></td>
+					</tr>
+					<tr>
+						<td>Value:</td>
+						<td spellcheck="false"><textarea id="cvalue" class="easyui-textbox" name="value" data-options="multiline:true" style="width:450px;height:200px"></textarea></td>
+					</tr>
+				</table>
+			</form>
+			<div style="text-align:center;padding:5px">
+				<a href="javascript:void(0)" class="easyui-linkbutton" onclick="createNode()">Submit</a>
+			</div>
 	    </div>
 	</div>
 
