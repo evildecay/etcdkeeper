@@ -40,9 +40,9 @@
 * Content simple filter search.
 
 ## Work in progress
-* Get data based on etcd user permissions.  (new features)
-* Display the status information of etcd, version, data size.  (new features)
-* Add import and export features.  (new features)
+* Get data based on etcd user permissions.  **(new features)**
+* Display the status information of etcd, version, data size.  **(new features)**
+* Add import and export features.  **(new features)**
 
 ## Special Note
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
