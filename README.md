@@ -35,10 +35,6 @@
 * Content edits use the ace editor([Ace editor](https://ace.c9.io)). Support toml,ini,yaml,json,xml and so on to highlight view.
 * Content format. (Currently only support json, Other types can be extended later) Thanks jim3ma for his contribution.[@jim3ma]( https://github.com/jim3ma)
 
-## Future Features
-* Import and export.
-* Content simple filter search.
-
 ## Work in progress
 * Get data based on etcd user permissions.  **(new features)**
 * Display the status information of etcd, version, data size.  **(new features)**
