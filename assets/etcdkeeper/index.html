@@ -29,8 +29,9 @@
 	</style>
 </head>
 <body style="overflow: hidden;">
-	<h2><img src="../framework/logo.png" width="20"></img><font color="00a0e9"> ETCD</font> Keeper <span id="ver" style="border: 1px solid #D4D4D4;border-radius: 5px;cursor:pointer;">v3</span></h2>
+	<h2><img src="../framework/logo.png" width="20" style="position:relative;top:3px;"></img><font color="00a0e9"> ETCD</font> Keeper <span id="ver" style="border: 1px solid #D4D4D4;border-radius: 5px;cursor:pointer;">v3</span></h2>
 	<div class="noborder">
+		<img id="userButton" src="../framework/easyui/themes/icons/user.png" width="20" style="position:relative;top:7px;cursor:pointer;"></img>
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'127.0.0.1:2379',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
@@ -93,8 +94,31 @@
 			</div>
 	    </div>
 	</div>
+	
+	<div id="userinfo" class="easyui-window" title="Authentication" data-options="modal:true,closed:true" style="width:350px;height:220px;padding:10px;">
+		<div style="padding:10px 40px 20px 40px">
+			<table cellpadding="10">
+				<tr>
+					<td>Username:</td>
+					<td><input id="uname" class="easyui-textbox" type="text" name="uname" data-options="required:true" style="width:120px;"/></td>
+				</tr>
+				<tr>
+					<td>Password:</td>
+					<td><input id="passwd" class="easyui-textbox" type="password" name="passwd" data-options="required:true" style="width:120px;"/></td>
+				</tr>
+			</table>
+			<div style="text-align:center;padding:5px">
+				<a href="javascript:void(0)" class="easyui-linkbutton" onclick="userOK()">Submit</a>
+			</div>
+	    </div>
+	</div>
 
-    <div style="text-align:right;color:#BDBDBD;margin-top:2px;">ETCD Keeper 0.7.2</div>
+	<div style="text-align:right;color:#BDBDBD;margin-top:2px;">
+		<span id="statusVersion"></span>
+		<span id="statusSize" style="margin-left: 10px;"></span>
+		<span id="statusMember" style="margin-left: 10px;"></span>
+		<span style="margin-left: 10px;">ETCD Keeper 0.7.3</span>
+	</div>
 	
 	<div id="modeMenu" style="">
 		<div id="mode_text" onclick="changeMode('text')">text</div>
@@ -142,6 +166,9 @@
                     left: e.pageX,
                     top: e.pageY
                 });
+            });
+			$('#userButton').bind('click',function(e){
+                $('#userinfo').window('open');
             });
         });
         function selVersion(ver) {
@@ -243,22 +270,39 @@
 		
 		function connect() {
 			var status = 'ok';
+			var uname = $('#uname').textbox('getValue');
+			var passwd = $('#passwd').textbox('getValue');
 			$.ajax({
 				type: 'POST',
 				timeout: 5000,
 				url:  serverBase + '/connect',
-				data: {'host': etcdBase},
+				data: {'host': etcdBase, 'uname': uname, 'passwd': passwd},
 				async: false,
-				dataType: 'text',
+				dataType: 'json',
 				success: function(data) {
-					if (data === 'ok') {
+					if (data.status === 'ok') {
 						console.log('Connect etcd success.');
 						//alertMessage('Connect etcd success.');
-					}else if (data === 'running') {
-						console.log('etcd is running.');
-					}else {
-						$.messager.alert('Error', data, 'error');
-						status = 'error'
+					} else if (data.status === 'running') {
+						console.log('Etcd is running.');
+					} else if (data.status === 'login') {
+						console.log('User login required.');
+						status = 'login';
+					} else if (data.status === 'root') {
+						console.log('Need to set root.');
+						status = 'root';
+					} else {
+						$.messager.alert('Error', data.message, 'error');
+						status = 'error';
+					}
+					if (data.info) {
+						$('#statusVersion').html('ETCD version:' + data.info.version);
+						$('#statusSize').html('Size:' + data.info.size)
+						$('#statusMember').html('Member name:' + data.info.name)
+					} else {
+						$('#statusVersion').html('');
+						$('#statusSize').html('')
+						$('#statusMember').html('')
 					}
 				},
 				error: function(err) {
@@ -268,7 +312,12 @@
 			
 			if (status === 'ok') {
 				reload();
-			}else {
+			} else if (status === 'login') {
+				$('#userinfo').window('open');
+			} else if (status === 'root') {
+				$('#userinfo').window('open');
+				$.messager.alert('Warning', 'The server needs to initialize the root user.');
+			} else {
 				resetValue();
 				$('#etree').tree('loadData', []);
 			}
@@ -336,7 +385,10 @@
 					$('#etree').tree(node.state === 'closed' ? 'expand' : 'collapse', node.target);
 				}
 				if (version === '2') {
-                    editor.setReadOnly(true);
+					if (node.state === 'closed') {
+						return
+					}
+					editor.setReadOnly(true);
                 }
 
 				$('#footer').html('&nbsp;');
@@ -380,7 +432,7 @@
 									data: arr
 								});
 							}
-							
+
 							for(var n in children) {
 								$('#etree').tree('remove', children[n].target);
 							}
@@ -455,13 +507,17 @@
 				async: true,
 				dataType: 'json',
 				success: function(data) {
-					editor.getSession().setValue(data.node.value);
-					var ttl = 0;
-					if (data.node.ttl) {
-						ttl = data.node.ttl;
+					if (data.errorCode) {
+						$.messager.alert('Error', data.message, 'error');
+					} else {
+						editor.getSession().setValue(data.node.value);
+						var ttl = 0;
+						if (data.node.ttl) {
+							ttl = data.node.ttl;
+						}
+						changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
+						alertMessage('Save success.');
 					}
-					changeFooter(ttl, data.node.createdIndex, data.node.modifiedIndex);
-					alertMessage('Save success.');
 				},
 				error: function(err) {
 					$.messager.alert('Error',$.toJSON(err),'error');
@@ -743,6 +799,11 @@
 					return
 				}
 			}
+		}
+		
+		function userOK() {
+			$('#userinfo').window('close');
+			connect();
 		}
 	</script>
 </body>
