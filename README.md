@@ -7,6 +7,7 @@
 
 ## Usage
 * Run etcdkeeper.exe (windows version)
+* Run etcdkeeper.exe -auth (If enable etcd authentication)
 * [Download other platform releases](https://github.com/evildecay/etcdkeeper/releases).
 ```
   Usage of etcdkeeper.exe:
@@ -24,10 +25,18 @@
         identify secure client using this TLS certificate file (only v3)
   -key string
         identify secure client using this TLS key file (only v3)
+  -auth bool
+        use etcd auth
 ```
 * Open your browser and enter the address: http://127.0.0.1:8080/etcdkeeper
 * Click on the version of the title to select the version of ETCD. The default is V3. Reopening will remember your choice.
 * Right click on the tree node to add or delete.
+* Get data based on etcd user permissions.
+  - Just display the list according to the configured permissions, and there will be time to add the configuration permission features.
+  - Each time you restart etcdkeeper, you need to enter the root username and password for each etcd server address. 
+  - [enable etcdv3 authentication](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/authentication.md)
+  - [enable etcdv2 authentication](https://github.com/etcd-io/etcd/blob/master/Documentation/v2/authentication.md)
+* Display the status information of etcd, version, data size.
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
 ## Features
@@ -36,9 +45,7 @@
 * Content format. (Currently only support json, Other types can be extended later) Thanks jim3ma for his contribution.[@jim3ma]( https://github.com/jim3ma)
 
 ## Work in progress
-* Get data based on etcd user permissions.  **(new features)**
-* Display the status information of etcd, version, data size.  **(new features)**
-* Add import and export features.  **(new features)**
+* Add import and export features.  **(delay)**
 
 ## Special Note
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
