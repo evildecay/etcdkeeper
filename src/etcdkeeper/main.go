@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -75,10 +76,11 @@ func main() {
 	// dirctory mode
 	http.HandleFunc("/v3/getpath", middleware(nothing, getPath))
 
-	wd, err := os.Getwd()
+	wd, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
 	}
+	rootPath := filepath.Dir(wd)
 
 	// Session management
 	sessmgr, err = session.NewManager("memory", "_etcdkeeper_session", 86400)
@@ -92,9 +94,9 @@ func main() {
 			log.Println("Session GC.")
 		}
 	}()
-	//log.Println(http.Dir(wd + "/assets"))
+	//log.Println(http.Dir(rootPath + "/assets"))
 
-	http.Handle("/", http.FileServer(http.Dir(wd + "/assets"))) // view static directory
+	http.Handle("/", http.FileServer(http.Dir(rootPath + "/assets"))) // view static directory
 
 	log.Printf("listening on %s:%d\n", *host, *port)
 	err = http.ListenAndServe(*host + ":" + strconv.Itoa(*port), nil)
