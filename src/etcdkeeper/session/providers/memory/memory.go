@@ -28,7 +28,6 @@ func (st *SessionStore) Get(key interface{}) interface{} {
 	} else {
 		return nil
 	}
-	return nil
 }
 
 func (st *SessionStore) Delete(key interface{}) error {
@@ -64,7 +63,6 @@ func (pder *Provider) SessionRead(sid string) (session.Session, error) {
 		sess, err := pder.SessionInit(sid)
 		return sess, err
 	}
-	return nil, nil
 }
 
 func (pder *Provider) SessionDestroy(sid string) error {

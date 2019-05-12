@@ -24,23 +24,25 @@ import (
 )
 
 var (
-	sep       = flag.String("sep", "/", "separator")
-	separator = ""
-	usetls    = flag.Bool("usetls", false, "use tls")
-	cacert    = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
-	cert      = flag.String("cert", "", "identify secure client using this TLS certificate file")
-	keyfile   = flag.String("key", "", "identify secure client using this TLS key file")
-	useAuth   = flag.Bool("auth", false, "use auth")
-	clients   = make(map[string]*clientv3.Client)
-	v2clients     = make(map[string]client.Client)
+	sep         = flag.String("sep", "/", "separator")
+	separator   = ""
+	usetls      = flag.Bool("usetls", false, "use tls")
+	cacert      = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
+	cert        = flag.String("cert", "", "identify secure client using this TLS certificate file")
+	keyfile     = flag.String("key", "", "identify secure client using this TLS key file")
+	useAuth     = flag.Bool("auth", false, "use auth")
+	rootUsers   = make(map[string]*userInfo) // host:rootUser
+	rootUesrsV2 = make(map[string]*userInfo) // host:rootUser
 
 	sessmgr   *session.Manager
 	mu        sync.Mutex
 )
 
-const (
-	rootClientName = "_root_"
-)
+type userInfo struct {
+	host   string
+	uname  string
+	passwd string
+}
 
 func main() {
 	host := flag.String("h","0.0.0.0","host name or ip address")
@@ -87,13 +89,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go func() {
-		ticker := time.NewTicker(86400*time.Second)
-		for range ticker.C {
-			sessmgr.GC()
-			log.Println("Session GC.")
-		}
-	}()
+	time.AfterFunc(86400*time.Second, func() {
+		sessmgr.GC()
+	})
 	//log.Println(http.Dir(rootPath + "/assets"))
 
 	http.Handle("/", http.FileServer(http.Dir(rootPath + "/assets"))) // view static directory
@@ -148,10 +146,9 @@ func connectV2(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(host, "http") {
 		host = "http://" + host
 	}
-	endpoints := []string{host}
-	var info map[string]string
+
 	if *useAuth {
-		_, ok := v2clients[host + "@" + rootClientName]
+		_, ok := rootUesrsV2[host]
 		if !ok && uname != "root" {
 			b, _ := json.Marshal(map[string]interface{}{"status":"root"})
 			io.WriteString(w, string(b))
@@ -164,51 +161,36 @@ func connectV2(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if v := sess.Get("clientv2"); v != nil {
-		c := v.(client.Client)
-		if uname == sess.Get("username").(string) {
-			if host == c.Endpoints()[0] {
-				info = getInfoV2(host)
-				b, _ := json.Marshal(map[string]interface{}{"status":"running", "info":info})
-				io.WriteString(w, string(b))
-				return
-			}
+	if uinfo, ok := sess.Get("uinfov2").(*userInfo); ok {
+		if host == uinfo.host && uname == uinfo.uname && passwd == uinfo.passwd {
+			info := getInfoV2(host)
+			b, _ := json.Marshal(map[string]interface{}{"status":"running", "info":info})
+			io.WriteString(w, string(b))
+			return
 		}
-	} else {
-		// v2 is not closed
 	}
 
-	cfg := client.Config{
-		Endpoints:               endpoints,
-		HeaderTimeoutPerRequest: 5*time.Second,
-	}
-	if *useAuth {
-		cfg.Username = uname
-		cfg.Password = passwd
-	}
-
-	c, err := client.New(cfg)
+	uinfo := &userInfo{host:host, uname:uname, passwd:passwd}
+	_, err := newClientV2(uinfo)
 	if err != nil {
 		log.Println(r.Method, "v2", "connect fail.")
 		b, _ := json.Marshal(map[string]interface{}{"status":"error", "message":err.Error()})
 		io.WriteString(w, string(b))
-	} else {
-		v2clients[host + "@" + uname] = c
-		if *useAuth {
-			if uname == "root" { // etcd must be root to manage
-				v2clients[host + "@" + rootClientName] = c
-			}
-		} else {
-			v2clients[host + "@" + rootClientName] = c
-		}
-		sess.Set("clientv2", c)
-		sess.Set("clientName", host + "@" + uname)
-		sess.Set("username", uname) // for v2
-		log.Println(r.Method, "v2", "connect success.")
-		info = getInfoV2(host)
-		b, _ := json.Marshal(map[string]interface{}{"status":"ok", "info":info})
-		io.WriteString(w, string(b))
+		return
 	}
+	_ = sess.Set("uinfov2", uinfo)
+
+	if *useAuth {
+		if uname == "root" {
+			rootUesrsV2[host] = uinfo
+		}
+	} else {
+		rootUesrsV2[host] = uinfo
+	}
+	log.Println(r.Method, "v2", "connect success.")
+	info := getInfoV2(host)
+	b, _ := json.Marshal(map[string]interface{}{"status":"running", "info":info})
+	io.WriteString(w, string(b))
 }
 
 func putV2(w http.ResponseWriter, r *http.Request) {
@@ -269,80 +251,88 @@ func getV2(w http.ResponseWriter, r *http.Request) {
 	data := make(map[string]interface{})
 	log.Println("GET", "v2", key)
 
-	kapi := client.NewKeysAPI(getClientV2(w, r))
+	var cli client.Client
+	sess := sessmgr.SessionStart(w, r)
+	v := sess.Get("uinfov2")
+	var uinfo *userInfo
+	if v != nil {
+		uinfo = v.(*userInfo)
+		cli, _ = newClientV2(uinfo)
+		kapi := client.NewKeysAPI(cli)
 
-	var permissions [][]string
-	if r.FormValue("prefix") == "true" {
-		var e error
-		permissions, e = getPermissionPrefixV2(getClientName(w, r), key)
-		if e != nil {
-			io.WriteString(w, e.Error())
-			return
-		}
-	} else {
-		permissions = [][]string{{key, ""}}
-	}
-
-	var (
-		min, max int
-	)
-	if key == separator {
-		min = 1
-	} else {
-		min = len(strings.Split(key, separator))
-	}
-	max = min
-	all := make(map[int][]map[string]interface{})
-	if key == separator {
-		all[min] = []map[string]interface{}{{"key":key, "value":"", "dir":true, "nodes":make([]map[string]interface{}, 0)}}
-	}
-	for _, p := range permissions {
-		pKey, pRange := p[0], p[1]
-		var opt *client.GetOptions
-		if pRange != "" {
-			if pRange == "c" {
-				pKey += separator
+		var permissions [][]string
+		if r.FormValue("prefix") == "true" {
+			var e error
+			permissions, e = getPermissionPrefixV2(uinfo.host, uinfo.uname, key)
+			if e != nil {
+				io.WriteString(w, e.Error())
+				return
 			}
-			opt = &client.GetOptions{Recursive:true, Sort:true}
-		}
-		if resp, err := kapi.Get(context.Background(), pKey, opt); err != nil {
-			data["errorCode"] = 500
-			data["message"] = err.Error()
 		} else {
-			if resp.Node == nil {
+			permissions = [][]string{{key, ""}}
+		}
+
+		var (
+			min, max int
+		)
+		if key == separator {
+			min = 1
+		} else {
+			min = len(strings.Split(key, separator))
+		}
+		max = min
+		all := make(map[int][]map[string]interface{})
+		if key == separator {
+			all[min] = []map[string]interface{}{{"key":key, "value":"", "dir":true, "nodes":make([]map[string]interface{}, 0)}}
+		}
+		for _, p := range permissions {
+			pKey, pRange := p[0], p[1]
+			var opt *client.GetOptions
+			if pRange != "" {
+				if pRange == "c" {
+					pKey += separator
+				}
+				opt = &client.GetOptions{Recursive:true, Sort:true}
+			}
+			if resp, err := kapi.Get(context.Background(), pKey, opt); err != nil {
 				data["errorCode"] = 500
-				data["message"] = "The node does not exist."
+				data["message"] = err.Error()
 			} else {
-				max = getNode(resp.Node , key, all, min, max)
+				if resp.Node == nil {
+					data["errorCode"] = 500
+					data["message"] = "The node does not exist."
+				} else {
+					max = getNode(resp.Node , key, all, min, max)
+				}
 			}
 		}
-	}
 
-	//b, _ := json.MarshalIndent(all, "", "  ")
-	//fmt.Println(string(b))
+		//b, _ := json.MarshalIndent(all, "", "  ")
+		//fmt.Println(string(b))
 
-	// parent-child mapping
-	for i := max; i > min; i-- {
-		for _, a := range all[i] {
-			for _, pa := range all[i-1] {
-				if i == 2 { // The last is root
-					pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
-					pa["dir"] = true
-				} else {
-					if strings.HasPrefix(a["key"].(string), pa["key"].(string) + separator) {
+		// parent-child mapping
+		for i := max; i > min; i-- {
+			for _, a := range all[i] {
+				for _, pa := range all[i-1] {
+					if i == 2 { // The last is root
 						pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
 						pa["dir"] = true
+					} else {
+						if strings.HasPrefix(a["key"].(string), pa["key"].(string) + separator) {
+							pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
+							pa["dir"] = true
+						}
 					}
 				}
 			}
 		}
-	}
 
-	for _, n := range all[min] {
-		if n["key"] == key {
-			nodesSort(n)
-			data["node"] = n
-			break
+		for _, n := range all[min] {
+			if n["key"] == key {
+				nodesSort(n)
+				data["node"] = n
+				break
+			}
 		}
 	}
 
@@ -446,20 +436,36 @@ func getPathV2(w http.ResponseWriter, r *http.Request) {
 
 func getClientV2(w http.ResponseWriter, r *http.Request) client.Client {
 	sess := sessmgr.SessionStart(w, r)
-	v := sess.Get("clientv2")
+	v := sess.Get("uinfov2")
 	if v != nil {
-		return v.(client.Client)
+		uinfo := v.(*userInfo)
+		c, _ := newClientV2(uinfo)
+		return c
 	}
 	return nil
 }
 
-func getPermissionPrefixV2(clientName, key string) ([][]string, error) {
+func newClientV2(uinfo *userInfo) (client.Client, error) {
+	cfg := client.Config{
+		Endpoints:               []string{uinfo.host},
+		HeaderTimeoutPerRequest: 5*time.Second,
+	}
+	if *useAuth {
+		cfg.Username = uinfo.uname
+		cfg.Password = uinfo.passwd
+	}
+
+	c, err := client.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func getPermissionPrefixV2(host, uname, key string) ([][]string, error) {
 	if !*useAuth {
 		return [][]string{{key, "p"}}, nil // No auth return all
 	} else {
-		a := strings.Split(clientName, "@")
-		host, uname := a[0], a[1]
-
 		if uname == "root" {
 			return [][]string{{key, "p"}}, nil
 		}
@@ -467,7 +473,11 @@ func getPermissionPrefixV2(clientName, key string) ([][]string, error) {
 		if !strings.HasPrefix(host, "http://") {
 			host = "http://" + host
 		}
-		rootCli := v2clients[host + "@" + rootClientName]
+		rootUser := rootUesrsV2[host]
+		rootCli, err := newClientV2(rootUser)
+		if err != nil {
+			return nil, err
+		}
 		rootUserKapi := client.NewAuthUserAPI(rootCli)
 		rootRoleKapi := client.NewAuthRoleAPI(rootCli)
 
@@ -524,13 +534,18 @@ func getInfoV2(host string) map[string]string {
 		host = "http://" + host
 	}
 	info := make(map[string]string)
-	cli, ok := v2clients[host + "@" + rootClientName]
+	uinfo, ok := rootUesrsV2[host]
 	if ok {
-		ver, err := cli.GetVersion(context.Background())
+		rootClient, err := newClientV2(uinfo)
+		if err != nil {
+			log.Println(err)
+			return info
+		}
+		ver, err := rootClient.GetVersion(context.Background())
 		if err != nil {
 			log.Fatal(err)
 		}
-		memberKapi := client.NewMembersAPI(cli)
+		memberKapi := client.NewMembersAPI(rootClient)
 		member, err := memberKapi.Leader(context.Background())
 		if err != nil {
 			log.Fatal(err)
@@ -550,10 +565,9 @@ func connect(w http.ResponseWriter, r *http.Request) {
 	host := r.FormValue("host")
 	uname := r.FormValue("uname")
 	passwd := r.FormValue("passwd")
-	var info map[string]string
+
 	if *useAuth {
-		_, ok := clients[host + "@" + rootClientName]
-		if !ok && uname != "root" {
+		if _, ok := rootUsers[host]; !ok && uname != "root" { // no root user
 			b, _ := json.Marshal(map[string]interface{}{"status":"root"})
 			io.WriteString(w, string(b))
 			return
@@ -564,74 +578,43 @@ func connect(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if v := sess.Get("client"); v != nil {
-		c := v.(*clientv3.Client)
-		if uname == c.Username {
-			if host == c.Endpoints()[0] {
-				info = getInfo(host)
-				b, _ := json.Marshal(map[string]interface{}{"status":"running", "info":info})
-				io.WriteString(w, string(b))
-				return
-			}
-		}
-	} else {
-		if c, ok := clients[host + "@" + uname]; ok {
-			c.Close()
-		}
-	}
-	endpoints := []string{host}
-	var err error
 
-	// use tls if usetls is true
-	var tlsConfig *tls.Config
-	if *usetls {
-		tlsInfo := transport.TLSInfo{
-			CertFile:      *cert,
-			KeyFile:       *keyfile,
-			TrustedCAFile: *cacert,
-		}
-		tlsConfig, err = tlsInfo.ClientConfig()
-		if err != nil {
-			log.Println(err.Error())
+	if uinfo, ok := sess.Get("uinfo").(*userInfo); ok {
+		if host == uinfo.host && uname == uinfo.uname && passwd == uinfo.passwd {
+			info := getInfo(host)
+			b, _ := json.Marshal(map[string]interface{}{"status":"running", "info":info})
+			io.WriteString(w, string(b))
+			return
 		}
 	}
 
-	conf := clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: 5 * time.Second,
-		TLS:         tlsConfig,
-	}
-	if *useAuth {
-		conf.Username = uname
-		conf.Password = passwd
-	}
-
-	var c *clientv3.Client
-	c, err = clientv3.New(conf)
+	uinfo := &userInfo{host:host, uname:uname, passwd:passwd}
+	c, err := newClient(uinfo)
 	if err != nil {
 		log.Println(r.Method, "v3", "connect fail.")
 		b, _ := json.Marshal(map[string]interface{}{"status":"error", "message":err.Error()})
 		io.WriteString(w, string(b))
-	} else {
-		clients[host + "@" + uname] = c
-		if *useAuth {
-			if uname == "root" { // etcd must be root to manage
-				clients[host + "@" + rootClientName] = c
-			}
-		} else {
-			clients[host + "@" + rootClientName] = c
-		}
-		sess.Set("client", c)
-		sess.Set("clientName", host + "@" + uname)
-		log.Println(r.Method, "v3", "connect success.")
-		info = getInfo(host)
-		b, _ := json.Marshal(map[string]interface{}{"status":"ok", "info":info})
-		io.WriteString(w, string(b))
+		return
 	}
+	defer c.Close()
+	_ = sess.Set("uinfo", uinfo)
+
+	if *useAuth {
+		if uname == "root" {
+			rootUsers[host] = uinfo
+		}
+	} else {
+		rootUsers[host] = uinfo
+	}
+	log.Println(r.Method, "v3", "connect success.")
+	info := getInfo(host)
+	b, _ := json.Marshal(map[string]interface{}{"status":"running", "info":info})
+	io.WriteString(w, string(b))
 }
 
 func put(w http.ResponseWriter, r *http.Request) {
 	cli := getClient(w, r)
+	defer cli.Close()
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	ttl := r.FormValue("ttl")
@@ -647,7 +630,9 @@ func put(w http.ResponseWriter, r *http.Request) {
 		}
 		var leaseResp *clientv3.LeaseGrantResponse
 		leaseResp, err = cli.Grant(context.TODO(), sec)
-		_, err = cli.Put(context.Background(), key, value, clientv3.WithLease(leaseResp.ID))
+		if err == nil && leaseResp != nil {
+			_, err = cli.Put(context.Background(), key, value, clientv3.WithLease(leaseResp.ID))
+		}
 	} else {
 		_, err = cli.Put(context.Background(), key, value)
 	}
@@ -682,70 +667,79 @@ func put(w http.ResponseWriter, r *http.Request) {
 }
 
 func get(w http.ResponseWriter, r *http.Request) {
-	cli := getClient(w, r)
-	key := r.FormValue("key")
 	data := make(map[string]interface{})
+	key := r.FormValue("key")
 	log.Println("GET", "v3", key)
 
-	permissions, e := getPermissionPrefix(getClientName(w, r), key)
-	if e != nil {
-		io.WriteString(w, e.Error())
-		return
-	}
-	if r.FormValue("prefix") == "true" {
-		pnode := make(map[string]interface{})
-		pnode["key"] = key
-		pnode["nodes"] = make([]map[string]interface{}, 0)
-		for _, p := range permissions {
-			var (
-				resp *clientv3.GetResponse
-				err  error
-			)
-			if p[1] != "" {
-				resp, err = cli.Get(context.Background(), p[0], clientv3.WithPrefix())
-			} else {
-				resp, err = cli.Get(context.Background(), p[0])
+	var cli *clientv3.Client
+	sess := sessmgr.SessionStart(w, r)
+	v := sess.Get("uinfo")
+	var uinfo *userInfo
+	if v != nil {
+		uinfo = v.(*userInfo)
+		cli, _ = newClient(uinfo)
+		defer cli.Close()
+
+		permissions, e := getPermissionPrefix(uinfo.host, uinfo.uname, key)
+		if e != nil {
+			io.WriteString(w, e.Error())
+			return
+		}
+		if r.FormValue("prefix") == "true" {
+			pnode := make(map[string]interface{})
+			pnode["key"] = key
+			pnode["nodes"] = make([]map[string]interface{}, 0)
+			for _, p := range permissions {
+				var (
+					resp *clientv3.GetResponse
+					err  error
+				)
+				if p[1] != "" {
+					resp, err = cli.Get(context.Background(), p[0], clientv3.WithPrefix())
+				} else {
+					resp, err = cli.Get(context.Background(), p[0])
+				}
+				if err != nil {
+					data["errorCode"] = 500
+					data["message"] = err.Error()
+				} else {
+					for _, kv := range resp.Kvs {
+						node := make(map[string]interface{})
+						node["key"] = string(kv.Key)
+						node["value"] = string(kv.Value)
+						node["dir"] = false
+						if key == string(kv.Key) {
+							node["ttl"] = getTTL(cli, kv.Lease)
+						} else {
+							node["ttl"] = 0
+						}
+						node["createdIndex"] = kv.CreateRevision
+						node["modifiedIndex"] = kv.ModRevision
+						nodes := pnode["nodes"].([]map[string]interface{})
+						pnode["nodes"] = append(nodes, node)
+					}
+				}
 			}
-			if err != nil {
+			data["node"] = pnode
+		} else {
+			if resp, err := cli.Get(context.Background(), key);err != nil {
 				data["errorCode"] = 500
 				data["message"] = err.Error()
 			} else {
-				for _, kv := range resp.Kvs {
+				if resp.Count > 0 {
+					kv := resp.Kvs[0]
 					node := make(map[string]interface{})
 					node["key"] = string(kv.Key)
 					node["value"] = string(kv.Value)
 					node["dir"] = false
-					if key == string(kv.Key) {
-						node["ttl"] = getTTL(cli, kv.Lease)
-					} else {
-						node["ttl"] = 0
-					}
+					node["ttl"] = getTTL(cli, kv.Lease)
 					node["createdIndex"] = kv.CreateRevision
 					node["modifiedIndex"] = kv.ModRevision
-					nodes := pnode["nodes"].([]map[string]interface{})
-					pnode["nodes"] = append(nodes, node)
+					data["node"] = node
+				} else {
+					data["errorCode"] = 500
+					data["message"] = "The node does not exist."
 				}
-			}
-		}
-		data["node"] = pnode
-	} else {
-		if resp, err := cli.Get(context.Background(), key);err != nil {
-			data["errorCode"] = 500
-			data["message"] = err.Error()
-		} else {
-			if resp.Count > 0 {
-				kv := resp.Kvs[0]
-				node := make(map[string]interface{})
-				node["key"] = string(kv.Key)
-				node["value"] = string(kv.Value)
-				node["dir"] = false
-				node["ttl"] = getTTL(cli, kv.Lease)
-				node["createdIndex"] = kv.CreateRevision
-				node["modifiedIndex"] = kv.ModRevision
-				data["node"] = node
-			} else {
-				data["errorCode"] = 500
-				data["message"] = "The node does not exist."
 			}
 		}
 	}
@@ -760,7 +754,6 @@ func get(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPath(w http.ResponseWriter, r *http.Request) {
-	cli := getClient(w, r)
 	originKey := r.FormValue("key")
 	log.Println("GET", "v3", originKey)
 	var (
@@ -773,116 +766,127 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 		max int
 		//prefixKey string
 	)
-	permissions, e := getPermissionPrefix(getClientName(w, r), originKey)
-	if e != nil {
-		io.WriteString(w, e.Error())
-		return
-	}
 
-	// parent
-	var (
-		presp *clientv3.GetResponse
-		err   error
-	)
-	if originKey != separator {
-		presp, err = cli.Get(context.Background(), originKey)
-		if err != nil {
-			data["errorCode"] = 500
-			data["message"] = err.Error()
-			dataByte, _ := json.Marshal(data)
-			io.WriteString(w, string(dataByte))
-			return
-		}
-	}
-	if originKey == separator {
-		min = 1
-		//prefixKey = separator
-	} else {
-		min = len(strings.Split(originKey, separator))
-		//prefixKey = originKey
-	}
-	max = min
-	all[min] = []map[string]interface{}{{"key":originKey}}
-	if presp != nil && presp.Count != 0 {
-		all[min][0]["value"] = string(presp.Kvs[0].Value)
-		all[min][0]["ttl"] = getTTL(cli, presp.Kvs[0].Lease)
-		all[min][0]["createdIndex"] = presp.Kvs[0].CreateRevision
-		all[min][0]["modifiedIndex"] = presp.Kvs[0].ModRevision
-	}
-	all[min][0]["nodes"] = make([]map[string]interface{}, 0)
+	var cli *clientv3.Client
+	sess := sessmgr.SessionStart(w, r)
+	v := sess.Get("uinfo")
+	var uinfo *userInfo
+	if v != nil {
+		uinfo = v.(*userInfo)
+		cli, _ = newClient(uinfo)
+		defer cli.Close()
 
-	for _, p := range permissions {
-		key, rangeEnd := p[0], p[1]
-		//child
-		var resp *clientv3.GetResponse
-		if rangeEnd != "" {
-			resp, err = cli.Get(context.Background(), key, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
-		} else {
-			resp, err = cli.Get(context.Background(), key, clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
-		}
-		if err != nil {
-			data["errorCode"] = 500
-			data["message"] = err.Error()
-			dataByte, _ := json.Marshal(data)
-			io.WriteString(w, string(dataByte))
+		permissions, e := getPermissionPrefix(uinfo.host, uinfo.uname, originKey)
+		if e != nil {
+			io.WriteString(w, e.Error())
 			return
 		}
 
-		for _, kv := range resp.Kvs {
-			if string(kv.Key) == separator {
-				continue
+		// parent
+		var (
+			presp *clientv3.GetResponse
+			err   error
+		)
+		if originKey != separator {
+			presp, err = cli.Get(context.Background(), originKey)
+			if err != nil {
+				data["errorCode"] = 500
+				data["message"] = err.Error()
+				dataByte, _ := json.Marshal(data)
+				io.WriteString(w, string(dataByte))
+				return
 			}
-			keys := strings.Split(string(kv.Key), separator) // /foo/bar
-			for i := range keys { // ["", "foo", "bar"]
-				k := strings.Join(keys[0:i+1], separator)
-				if k == "" {
+		}
+		if originKey == separator {
+			min = 1
+			//prefixKey = separator
+		} else {
+			min = len(strings.Split(originKey, separator))
+			//prefixKey = originKey
+		}
+		max = min
+		all[min] = []map[string]interface{}{{"key":originKey}}
+		if presp != nil && presp.Count != 0 {
+			all[min][0]["value"] = string(presp.Kvs[0].Value)
+			all[min][0]["ttl"] = getTTL(cli, presp.Kvs[0].Lease)
+			all[min][0]["createdIndex"] = presp.Kvs[0].CreateRevision
+			all[min][0]["modifiedIndex"] = presp.Kvs[0].ModRevision
+		}
+		all[min][0]["nodes"] = make([]map[string]interface{}, 0)
+
+		for _, p := range permissions {
+			key, rangeEnd := p[0], p[1]
+			//child
+			var resp *clientv3.GetResponse
+			if rangeEnd != "" {
+				resp, err = cli.Get(context.Background(), key, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+			} else {
+				resp, err = cli.Get(context.Background(), key, clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+			}
+			if err != nil {
+				data["errorCode"] = 500
+				data["message"] = err.Error()
+				dataByte, _ := json.Marshal(data)
+				io.WriteString(w, string(dataByte))
+				return
+			}
+
+			for _, kv := range resp.Kvs {
+				if string(kv.Key) == separator {
 					continue
 				}
-				node := map[string]interface{}{"key":k}
-				if node["key"].(string) == string(kv.Key) {
-					node["value"] = string(kv.Value)
-					if key == string(kv.Key) {
-						node["ttl"] = getTTL(cli, kv.Lease)
-					} else {
-						node["ttl"] = 0
+				keys := strings.Split(string(kv.Key), separator) // /foo/bar
+				for i := range keys { // ["", "foo", "bar"]
+					k := strings.Join(keys[0:i+1], separator)
+					if k == "" {
+						continue
 					}
-					node["createdIndex"] = kv.CreateRevision
-					node["modifiedIndex"] = kv.ModRevision
-				}
-				level := len(strings.Split(k, separator))
-				if level > max {
-					max = level
-				}
+					node := map[string]interface{}{"key":k}
+					if node["key"].(string) == string(kv.Key) {
+						node["value"] = string(kv.Value)
+						if key == string(kv.Key) {
+							node["ttl"] = getTTL(cli, kv.Lease)
+						} else {
+							node["ttl"] = 0
+						}
+						node["createdIndex"] = kv.CreateRevision
+						node["modifiedIndex"] = kv.ModRevision
+					}
+					level := len(strings.Split(k, separator))
+					if level > max {
+						max = level
+					}
 
-				if _, ok := all[level];!ok {
-					all[level] = make([]map[string]interface{}, 0)
-				}
-				levelNodes := all[level]
-				var isExist bool
-				for _, n := range levelNodes {
-					if n["key"].(string) == k {
-						isExist = true
+					if _, ok := all[level];!ok {
+						all[level] = make([]map[string]interface{}, 0)
 					}
-				}
-				if !isExist {
-					node["nodes"] = make([]map[string]interface{}, 0)
-					all[level] = append(all[level], node)
+					levelNodes := all[level]
+					var isExist bool
+					for _, n := range levelNodes {
+						if n["key"].(string) == k {
+							isExist = true
+						}
+					}
+					if !isExist {
+						node["nodes"] = make([]map[string]interface{}, 0)
+						all[level] = append(all[level], node)
+					}
 				}
 			}
 		}
-	}
 
-	// parent-child mapping
-	for i := max; i > min; i-- {
-		for _, a := range all[i] {
-			for _, pa := range all[i-1] {
-				if i == 2 {
-					pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
-					pa["dir"] = true
-				} else {
-					if strings.HasPrefix(a["key"].(string), pa["key"].(string) +separator) {
+		// parent-child mapping
+		for i := max; i > min; i-- {
+			for _, a := range all[i] {
+				for _, pa := range all[i-1] {
+					if i == 2 {
 						pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
 						pa["dir"] = true
+					} else {
+						if strings.HasPrefix(a["key"].(string), pa["key"].(string) +separator) {
+							pa["nodes"] = append(pa["nodes"].([]map[string]interface{}), a)
+							pa["dir"] = true
+						}
 					}
 				}
 			}
@@ -898,6 +902,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 
 func del(w http.ResponseWriter, r *http.Request) {
 	cli := getClient(w, r)
+	defer cli.Close()
 	key := r.FormValue("key")
 	dir := r.FormValue("dir")
 	log.Println("DELETE", "v3", key)
@@ -933,34 +938,64 @@ func getSeparator(w http.ResponseWriter, _ *http.Request) {
 
 func getClient(w http.ResponseWriter, r *http.Request) *clientv3.Client {
 	sess := sessmgr.SessionStart(w, r)
-	v := sess.Get("client")
+	v := sess.Get("uinfo")
 	if v != nil {
-		return v.(*clientv3.Client)
+		uinfo := v.(*userInfo)
+		c, _ := newClient(uinfo)
+		return c
 	}
 	return nil
 }
 
-func getClientName(w http.ResponseWriter, r *http.Request) string {
-	sess := sessmgr.SessionStart(w, r)
-	v := sess.Get("clientName")
-	if v != nil {
-		return v.(string)
+func newClient(uinfo *userInfo) (*clientv3.Client, error) {
+	endpoints := []string{uinfo.host}
+	var err error
+
+	// use tls if usetls is true
+	var tlsConfig *tls.Config
+	if *usetls {
+		tlsInfo := transport.TLSInfo{
+			CertFile:      *cert,
+			KeyFile:       *keyfile,
+			TrustedCAFile: *cacert,
+		}
+		tlsConfig, err = tlsInfo.ClientConfig()
+		if err != nil {
+			log.Println(err.Error())
+		}
 	}
-	return ""
+
+	conf := clientv3.Config{
+		Endpoints:            endpoints,
+		DialTimeout:          5 * time.Second,
+		TLS:                  tlsConfig,
+	}
+	if *useAuth {
+		conf.Username = uinfo.uname
+		conf.Password = uinfo.passwd
+	}
+
+	var c *clientv3.Client
+	c, err = clientv3.New(conf)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
-func getPermissionPrefix(clientName, key string) ([][]string, error) {
+func getPermissionPrefix(host, uname, key string) ([][]string, error) {
 	if !*useAuth {
 		return [][]string{{key, "p"}}, nil // No auth return all
 	} else {
-		a := strings.Split(clientName, "@")
-		host, uname := a[0], a[1]
-
 		if uname == "root" {
 			return [][]string{{key, "p"}}, nil
 		}
-
-		rootCli := clients[host + "@" + rootClientName]
+		rootUser := rootUsers[host]
+		rootCli, err := newClient(rootUser)
+		if err != nil {
+			return nil, err
+		}
+		defer rootCli.Close()
 
 		if resp, err := rootCli.UserList(context.Background()); err != nil {
 			return nil, err
@@ -996,45 +1031,50 @@ func getPermissionPrefix(clientName, key string) ([][]string, error) {
 
 func getInfo(host string) map[string]string {
 	info := make(map[string]string)
-	cli, ok := clients[host + "@" + rootClientName]
-	if ok {
-		status, err := cli.Status(context.Background(), host)
-		if err != nil {
-			log.Fatal(err)
-		}
-		mems, err := cli.MemberList(context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
-		kb := 1024
-		mb := kb*1024
-		gb := mb*1024
-		var sizeStr string
-		for _, m := range mems.Members {
-			if m.ID == status.Leader {
-				info["version"] = status.Version
-				gn, rem1 := size(m.Size(), gb)
-				mn, rem2 := size(rem1, mb)
-				kn, bn := size(rem2, kb)
-				if sizeStr != "" {
-					sizeStr += " "
-				}
-				if gn > 0 {
-					info["size"] = fmt.Sprintf("%dG", gn)
+	uinfo := rootUsers[host]
+	rootClient, err := newClient(uinfo)
+	if err != nil {
+		log.Println(err)
+		return info
+	}
+	defer rootClient.Close()
+
+	status, err := rootClient.Status(context.Background(), host)
+	if err != nil {
+		log.Fatal(err)
+	}
+	mems, err := rootClient.MemberList(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	kb := 1024
+	mb := kb*1024
+	gb := mb*1024
+	var sizeStr string
+	for _, m := range mems.Members {
+		if m.ID == status.Leader {
+			info["version"] = status.Version
+			gn, rem1 := size(m.Size(), gb)
+			mn, rem2 := size(rem1, mb)
+			kn, bn := size(rem2, kb)
+			if sizeStr != "" {
+				sizeStr += " "
+			}
+			if gn > 0 {
+				info["size"] = fmt.Sprintf("%dG", gn)
+			} else {
+				if mn > 0 {
+					info["size"] = fmt.Sprintf("%dM", mn)
 				} else {
-					if mn > 0 {
-						info["size"] = fmt.Sprintf("%dM", mn)
+					if kn > 0 {
+						info["size"] = fmt.Sprintf("%dK", kn)
 					} else {
-						if kn > 0 {
-							info["size"] = fmt.Sprintf("%dK", kn)
-						} else {
-							info["size"] = fmt.Sprintf("%dByte", bn)
-						}
+						info["size"] = fmt.Sprintf("%dByte", bn)
 					}
 				}
-				info["name"] = m.GetName()
-				break
 			}
+			info["name"] = m.GetName()
+			break
 		}
 	}
 	return info
