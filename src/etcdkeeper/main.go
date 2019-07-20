@@ -1054,7 +1054,7 @@ func getInfo(host string) map[string]string {
 	for _, m := range mems.Members {
 		if m.ID == status.Leader {
 			info["version"] = status.Version
-			gn, rem1 := size(m.Size(), gb)
+			gn, rem1 := size(int(status.DbSize), gb)
 			mn, rem2 := size(rem1, mb)
 			kn, bn := size(rem2, kb)
 			if sizeStr != "" {
