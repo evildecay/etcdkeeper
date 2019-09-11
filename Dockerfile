@@ -1,28 +1,28 @@
-FROM golang:1.9-alpine as builder
+FROM golang:1.12 as build
 
-RUN apk add -U git \
-    && go get github.com/golang/dep/...
+ENV GO111MODULE on
+ENV GOPROXY "https://goproxy.io"
 
-WORKDIR /go/src/github.com/evildecay/etcdkeeper
+WORKDIR /opt
+RUN mkdir etcdkeeper
+ADD . /opt/etcdkeeper
+WORKDIR /opt/etcdkeeper/src/etcdkeeper
 
-ADD src ./
-ADD Gopkg.* ./
-
-RUN dep ensure -update \
-    && go build -o etcdkeeper.bin etcdkeeper/main.go
+RUN go mod download \
+    && go build -o etcdkeeper.bin main.go
 
 
-FROM alpine:3.7
+FROM alpine:3.10
 
 ENV HOST="0.0.0.0"
 ENV PORT="8080"
 
-RUN apk add --no-cache ca-certificates
+# RUN apk add --no-cache ca-certificates
 
-RUN apk add --no-cache ca-certificates
+RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
-WORKDIR /etcdkeeper
-COPY --from=builder /go/src/github.com/evildecay/etcdkeeper/etcdkeeper.bin .
+WORKDIR /opt/etcdkeeper
+COPY --from=build /opt/etcdkeeper/src/etcdkeeper/etcdkeeper.bin .
 ADD assets assets
 
 EXPOSE ${PORT}
