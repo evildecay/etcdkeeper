@@ -695,7 +695,11 @@ func get(w http.ResponseWriter, r *http.Request) {
 					err  error
 				)
 				if p[1] != "" {
-					resp, err = cli.Get(context.Background(), p[0], clientv3.WithPrefix())
+					prefixKey := p[0]
+					if p[0] == "/" {
+						prefixKey = ""
+					}
+					resp, err = cli.Get(context.Background(), prefixKey, clientv3.WithPrefix())
 				} else {
 					resp, err = cli.Get(context.Background(), p[0])
 				}
