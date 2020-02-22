@@ -31,7 +31,7 @@ var (
 	cert           = flag.String("cert", "", "identify secure client using this TLS certificate file (v3)")
 	keyfile        = flag.String("key", "", "identify secure client using this TLS key file (v3)")
 	useAuth        = flag.Bool("auth", false, "use auth")
-	connectTImeout = flag.Int("timeout", 5, "ETCD client connect timeout")
+	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
 	rootUsers      = make(map[string]*userInfo) // host:rootUser
 	rootUesrsV2    = make(map[string]*userInfo) // host:rootUser
 
@@ -449,7 +449,7 @@ func getClientV2(w http.ResponseWriter, r *http.Request) client.Client {
 func newClientV2(uinfo *userInfo) (client.Client, error) {
 	cfg := client.Config{
 		Endpoints:               []string{uinfo.host},
-		HeaderTimeoutPerRequest: time.Second * time.Duration(*connectTImeout),
+		HeaderTimeoutPerRequest: time.Second * time.Duration(*connectTimeout),
 	}
 	if *useAuth {
 		cfg.Username = uinfo.uname
@@ -972,7 +972,7 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 
 	conf := clientv3.Config{
 		Endpoints:            endpoints,
-		DialTimeout:          time.Second * time.Duration(*connectTImeout),
+		DialTimeout:          time.Second * time.Duration(*connectTimeout),
 		TLS:                  tlsConfig,
 	}
 	if *useAuth {
