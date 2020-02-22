@@ -24,18 +24,19 @@ import (
 )
 
 var (
-	sep         = flag.String("sep", "/", "separator")
-	separator   = ""
-	usetls      = flag.Bool("usetls", false, "use tls")
-	cacert      = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
-	cert        = flag.String("cert", "", "identify secure client using this TLS certificate file")
-	keyfile     = flag.String("key", "", "identify secure client using this TLS key file")
-	useAuth     = flag.Bool("auth", false, "use auth")
-	rootUsers   = make(map[string]*userInfo) // host:rootUser
-	rootUesrsV2 = make(map[string]*userInfo) // host:rootUser
+	sep            = flag.String("sep", "/", "separator")
+	separator      = ""
+	usetls         = flag.Bool("usetls", false, "use tls")
+	cacert         = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle (v3)")
+	cert           = flag.String("cert", "", "identify secure client using this TLS certificate file (v3)")
+	keyfile        = flag.String("key", "", "identify secure client using this TLS key file (v3)")
+	useAuth        = flag.Bool("auth", false, "use auth")
+	connectTImeout = flag.Int("timeout", 5, "ETCD client connect timeout")
+	rootUsers      = make(map[string]*userInfo) // host:rootUser
+	rootUesrsV2    = make(map[string]*userInfo) // host:rootUser
 
-	sessmgr   *session.Manager
-	mu        sync.Mutex
+	sessmgr *session.Manager
+	mu      sync.Mutex
 )
 
 type userInfo struct {
@@ -448,7 +449,7 @@ func getClientV2(w http.ResponseWriter, r *http.Request) client.Client {
 func newClientV2(uinfo *userInfo) (client.Client, error) {
 	cfg := client.Config{
 		Endpoints:               []string{uinfo.host},
-		HeaderTimeoutPerRequest: 5*time.Second,
+		HeaderTimeoutPerRequest: time.Second * time.Duration(*connectTImeout),
 	}
 	if *useAuth {
 		cfg.Username = uinfo.uname
@@ -971,7 +972,7 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 
 	conf := clientv3.Config{
 		Endpoints:            endpoints,
-		DialTimeout:          5 * time.Second,
+		DialTimeout:          time.Second * time.Duration(*connectTImeout),
 		TLS:                  tlsConfig,
 	}
 	if *useAuth {
