@@ -145,7 +145,8 @@
 		function resizeWindow(){
 			$('#elayout').height(($(window).height() - 128) + 'px')
 		}
-		
+
+		var timeout = 5000 // milliseconds
 		var separator = '';
 		var serverBase = '/v3';
 		var etcdBase = Cookies.get('etcd-endpoint');
@@ -224,7 +225,7 @@
 		// get separator
 		$.ajax({
 			type: 'GET',
-			timeout: 5000,
+			timeout: timeout,
 			url:  serverBase + '/separator',
 			async: false,
 			dataType: 'text',
@@ -274,7 +275,7 @@
 			var passwd = $('#passwd').textbox('getValue');
 			$.ajax({
 				type: 'POST',
-				timeout: 5000,
+				timeout: timeout,
 				url:  serverBase + '/connect',
 				data: {'host': etcdBase, 'uname': uname, 'passwd': passwd},
 				async: false,
@@ -353,7 +354,7 @@
 				editor.setReadOnly(false);
 				$.ajax({
 					type: 'GET',
-					timeout: 5000,
+					timeout: timeout,
 					url:  serverBase + '/get',
 					data: {'key': node.path},
 					async: true,
@@ -405,7 +406,7 @@
 				}
 				$.ajax({
 					type: 'GET',
-					timeout: 5000,
+					timeout: timeout,
 					url:  url,
 					data: {'key': node.path, 'prefix': 'true'},
 					async: true,
@@ -501,7 +502,7 @@
 			var node = $('#etree').tree('getSelected');
 			$.ajax({
 				type: 'PUT',
-				timeout: 5000,
+				timeout: timeout,
 				url:  serverBase + '/put',
 				data: {'key': node.path, 'value':editor.getValue()},
 				async: true,
@@ -540,7 +541,7 @@
 					}
 					$.ajax({
 						type: 'PUT',
-						timeout: 5000,
+						timeout: timeout,
 						url:  serverBase + '/put',
 						data: {'key':createNodePath,'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
 						async: true,
@@ -593,7 +594,7 @@
 					
 					$.ajax({
 						type: 'PUT',
-						timeout: 5000,
+						timeout: timeout,
 						url:  serverBase + '/put',
 						data: {dir:$('#dir').combobox('getValue'),'key':nodePath + separator + pathArr.join(separator),'value':$('#cvalue').textbox().val(),'ttl':$('#ttl').numberbox().val()},
 						async: true,
@@ -685,7 +686,7 @@
 				if (r){
 					$.ajax({
 						type: 'POST',
-						timeout: 5000,
+						timeout: timeout,
 						url:  serverBase + '/delete',
 						data: {'key': node.path, 'dir':node.dir},
 						async: true,
