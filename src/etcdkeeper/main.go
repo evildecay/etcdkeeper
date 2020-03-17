@@ -33,7 +33,7 @@ var (
 	cert           = flag.String("cert", "", "identify secure client using this TLS certificate file (v3)")
 	keyfile        = flag.String("key", "", "identify secure client using this TLS key file (v3)")
 	useAuth        = flag.Bool("auth", false, "use auth")
-	default_etcd   = flag.String("default_etcd", "127.0.0.1:2379", "default etcd address")
+	default_etcd   = flag.String("default_etcd", "127.0.0.1:2379", "default etcd address, empty if do not want auto connect")
 	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
 	rootUsers      = make(map[string]*userInfo) // host:rootUser
 	rootUesrsV2    = make(map[string]*userInfo) // host:rootUser

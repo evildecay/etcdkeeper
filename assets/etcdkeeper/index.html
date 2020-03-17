@@ -274,19 +274,18 @@
 					var status = 'ok';
 					if (data.status === 'ok') {
 						console.log('Connect etcd success.');
-						reload();
 						//alertMessage('Connect etcd success.');
 					} else if (data.status === 'running') {
 						console.log('Etcd is running.');
 					} else if (data.status === 'login') {
-						$('#userinfo').window('open');
+						console.log('User login required.');
+						status = 'login';
 					} else if (data.status === 'root') {
-						$.messager.alert('Warning', 'The server needs to initialize the root user.');
-						$('#userinfo').window('open');
+						console.log('Need to set root.');
+						status = 'root';
 					} else {
 						$.messager.alert('Error', data.message, 'error');
-						resetValue();
-						$('#etree').tree('loadData', []);
+						status = 'error';
 					}
 					if (data.info) {
 						$('#statusVersion').html('ETCD version:' + data.info.version);
@@ -296,6 +295,18 @@
 						$('#statusVersion').html('');
 						$('#statusSize').html('')
 						$('#statusMember').html('')
+					}
+
+					if (status === 'ok') {
+						reload();
+					} else if (status === 'login') {
+						$('#userinfo').window('open');
+					} else if (status === 'root') {
+						$('#userinfo').window('open');
+						$.messager.alert('Warning', 'The server needs to initialize the root user.');
+					} else {
+						resetValue();
+						$('#etree').tree('loadData', []);
 					}
 				},
 				error: function(err) {
