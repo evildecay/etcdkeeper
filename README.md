@@ -29,6 +29,11 @@
         use etcd auth
   -timeout int
         ETCD client connect timeout
+  -baseurl string
+        If you deploy etcdkeeper into a sub Dir
+  -default_etcd string
+        default etcd address, empty if do not want auto connect (default "127.0.0.1:2379")
+
 ```
 * Open your browser and enter the address: http://127.0.0.1:8080/etcdkeeper
 * Click on the version of the title to select the version of ETCD. The default is V3. Reopening will remember your choice.

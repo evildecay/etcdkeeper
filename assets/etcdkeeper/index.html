@@ -8,6 +8,7 @@
 	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/icon.css">
 	<link rel="stylesheet" type="text/css" href="../framework/custom/css/style.css">
 	<!-- 此行代码解决ie8中iframe里嵌套此页面会导致jquery错误-->
+	<script type="text/javascript" src="../vars.js"></script>
 	<script>document.documentElement.focus();</script>
 	<script type="text/javascript" src="../framework/easyui/jquery.min.js"></script>
 	<script type="text/javascript" src="../framework/easyui/jquery.easyui.min.js"></script>
@@ -32,7 +33,7 @@
 	<h2><img src="../framework/logo.png" width="20" style="position:relative;top:3px;"></img><font color="00a0e9"> ETCD</font> Keeper <span id="ver" style="border: 1px solid #D4D4D4;border-radius: 5px;cursor:pointer;">v3</span></h2>
 	<div class="noborder">
 		<img id="userButton" src="../framework/easyui/themes/icons/user.png" width="20" style="position:relative;top:7px;cursor:pointer;"></img>
-		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'127.0.0.1:2379',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
+		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'host:port',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
 	<div id="elayout" class="easyui-layout" style="width:100%;height:550px;">
@@ -92,7 +93,7 @@
 			<div style="text-align:center;padding:5px">
 				<a href="javascript:void(0)" class="easyui-linkbutton" onclick="createNode()">Submit</a>
 			</div>
-	    </div>
+		</div>
 	</div>
 	
 	<div id="userinfo" class="easyui-window" title="Authentication" data-options="modal:true,closed:true" style="width:350px;height:220px;padding:10px;">
@@ -110,7 +111,7 @@
 			<div style="text-align:center;padding:5px">
 				<a href="javascript:void(0)" class="easyui-linkbutton" onclick="userOK()">Submit</a>
 			</div>
-	    </div>
+		</div>
 	</div>
 
 	<div style="text-align:right;color:#BDBDBD;margin-top:2px;">
@@ -131,10 +132,10 @@
 		<div id="mode_json" onclick="changeMode('json')">json</div>
 	</div>
 
-    <div id="versionMenu" class="easyui-menu">
-        <div id="version_3" onclick="selVersion('3')">version 3</div>
-        <div id="version_2" onclick="selVersion('2')">version 2</div>
-    </div>
+	<div id="versionMenu" class="easyui-menu">
+		<div id="version_3" onclick="selVersion('3')">version 3</div>
+		<div id="version_2" onclick="selVersion('2')">version 2</div>
+	</div>
 	
 	<script>
 		resizeWindow();
@@ -147,64 +148,69 @@
 		}
 
 		var timeout = 5000 // milliseconds
-		var separator = '';
-		var serverBase = '/v3';
+		var separator = separator || '';
+		var default_etcd = default_etcd || '';
+		var position = location.pathname.lastIndexOf('etcdkeeper')
+		var defaultRoot = position > -1 ? location.pathname.slice(0, position-1) : ''
+		var root_path = root_path || defaultRoot;
+
+		var serverBase = root_path + '/v3';
 		var etcdBase = Cookies.get('etcd-endpoint');
 		if(typeof(etcdBase) === 'undefined') {
-			etcdBase = '127.0.0.1:2379';
+			etcdBase = default_etcd;
 		}
 
-        // version switch
-        var version = Cookies.get('etcd-version');
-        if(typeof(version) === 'undefined') {
-            version = '3';
-        }
-        setServerBase(version);
-        $(function(){
-            $('#ver').bind('click',function(e){
-                e.preventDefault();
-                $('#versionMenu').menu('show', {
-                    left: e.pageX,
-                    top: e.pageY
-                });
-            });
+		// version switch
+		var version = Cookies.get('etcd-version');
+		if(typeof(version) === 'undefined') {
+			version = '3';
+		}
+		setServerBase(version);
+		$(function(){
+			$('#ver').bind('click',function(e){
+				e.preventDefault();
+				$('#versionMenu').menu('show', {
+					left: e.pageX,
+					top: e.pageY
+				});
+			});
 			$('#userButton').bind('click',function(e){
-                $('#userinfo').window('open');
-            });
-        });
-        function selVersion(ver) {
-            setServerBase(ver);
-            version = ver;
-            connect();
-            Cookies.set('etcd-version', version, {expires: 30});
+				$('#userinfo').window('open');
+			});
+		});
+		function selVersion(ver) {
+			setServerBase(ver);
+			version = ver;
+			connect();
+			Cookies.set('etcd-version', version, {expires: 30});
 
-            $('#versionMenu').menu('setIcon', {
-                target: $('#version_2')[0],
-                iconCls: ''
-            });
-            $('#versionMenu').menu('setIcon', {
-                target: $('#version_3')[0],
-                iconCls: ''
-            });
-            $('#versionMenu').menu('setIcon', {
-                target: $('#version_' + ver)[0],
-                iconCls: 'icon-ok'
-            });
-        }
-        function setServerBase(ver) {
-            if (ver === '3') {
-                $('#ver').html('v3');
-                serverBase = '/v3';
-            } else {
-                $('#ver').html('v2');
-                serverBase = '/v2';
-            }
-        }
+			$('#versionMenu').menu('setIcon', {
+				target: $('#version_2')[0],
+				iconCls: ''
+			});
+			$('#versionMenu').menu('setIcon', {
+				target: $('#version_3')[0],
+				iconCls: ''
+			});
+			$('#versionMenu').menu('setIcon', {
+				target: $('#version_' + ver)[0],
+				iconCls: 'icon-ok'
+			});
+		}
+		function setServerBase(ver) {
+			if (ver === '3') {
+				$('#ver').html('v3');
+				serverBase = root_path+'/v3';
+			} else {
+				$('#ver').html('v2');
+				serverBase = root_path+'/v2';
+			}
+		}
 
 		var tree = [];
 		var idCount = 0;
 		var editor = ace.edit('value');
-        editor.$blockScrolling = Infinity;
+		editor.$blockScrolling = Infinity;
 		var curIconMode = 'mode_icon_text';
 		var aceMode = Cookies.get('ace-mode');
 		if (typeof(aceMode) === 'undefined') {
@@ -215,38 +221,22 @@
 			treeMode = 'list';
 		}
 		if (version === '2') {
-		    treeMode = 'path'
+			treeMode = 'path'
 		}
 		//var autoFormat = Cookies.get('auto-format');
 		//if(typeof(autoFormat) === 'undefined') {
 			//autoFormat = 'false';
 		//}
 		
-		// get separator
-		$.ajax({
-			type: 'GET',
-			timeout: timeout,
-			url:  serverBase + '/separator',
-			async: false,
-			dataType: 'text',
-			success: function(data) {
-				separator = data;
-				console.log(data);
-			},
-			error: function(err) {
-				$.messager.alert('Error', $.toJSON(err), 'error');
-			}
-		});
-		
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
 			editor.getSession().setMode('ace/mode/' + aceMode);
 			changeMode(aceMode);
 			init();
-            $('#versionMenu').menu('setIcon', {
-                target: $('#version_' + version)[0],
-                iconCls: 'icon-ok'
-            });
+			$('#versionMenu').menu('setIcon', {
+				target: $('#version_' + version)[0],
+				iconCls: 'icon-ok'
+			});
 		});
 		
 		function init() {
@@ -270,7 +260,7 @@
 		}
 		
 		function connect() {
-			var status = 'ok';
+			if (!etcdBase) return
 			var uname = $('#uname').textbox('getValue');
 			var passwd = $('#passwd').textbox('getValue');
 			$.ajax({
@@ -278,9 +268,10 @@
 				timeout: timeout,
 				url:  serverBase + '/connect',
 				data: {'host': etcdBase, 'uname': uname, 'passwd': passwd},
-				async: false,
+				async: true,
 				dataType: 'json',
 				success: function(data) {
+					var status = 'ok';
 					if (data.status === 'ok') {
 						console.log('Connect etcd success.');
 						//alertMessage('Connect etcd success.');
@@ -305,23 +296,23 @@
 						$('#statusSize').html('')
 						$('#statusMember').html('')
 					}
+
+					if (status === 'ok') {
+						reload();
+					} else if (status === 'login') {
+						$('#userinfo').window('open');
+					} else if (status === 'root') {
+						$('#userinfo').window('open');
+						$.messager.alert('Warning', 'The server needs to initialize the root user.');
+					} else {
+						resetValue();
+						$('#etree').tree('loadData', []);
+					}
 				},
 				error: function(err) {
 					$.messager.alert('Error', $.toJSON(err), 'error');
 				}
 			});
-			
-			if (status === 'ok') {
-				reload();
-			} else if (status === 'login') {
-				$('#userinfo').window('open');
-			} else if (status === 'root') {
-				$('#userinfo').window('open');
-				$.messager.alert('Warning', 'The server needs to initialize the root user.');
-			} else {
-				resetValue();
-				$('#etree').tree('loadData', []);
-			}
 		}
 		
 		function reload() {
@@ -390,7 +381,7 @@
 						return
 					}
 					editor.setReadOnly(true);
-                }
+				}
 
 				$('#footer').html('&nbsp;');
 				// clear child node
@@ -483,9 +474,9 @@
 			if (treeMode === 'path') {
 				mid = 'treeDirMenu';
 				if (version === '2') {
-                    if (node.dir !== true) {
-                        mid = "treeNodeMenu";
-                    }
+					if (node.dir !== true) {
+						mid = "treeNodeMenu";
+					}
 				}
 			} else {
 				if (node.dir === true) {
@@ -633,11 +624,11 @@
 										};
 									}
 									var objNode = nodeExist(obj.path);
-                                    if (objNode != null) {
-                                        node = objNode;
-                                        prePath = node.path;
-                                        continue;
-                                    }
+									if (objNode != null) {
+										node = objNode;
+										prePath = node.path;
+										continue;
+									}
 									if (newData.length === 0) {
 										newData.push(obj);
 									} else {
@@ -647,12 +638,12 @@
 									prePath = obj.path;
 								}
 								if (version === '3') {
-                                    $('#etree').tree('update', {
-                                        target: node.target,
-                                        iconCls: 'icon-dir'
-                                    });
+									$('#etree').tree('update', {
+										target: node.target,
+										iconCls: 'icon-dir'
+									});
 								}
-                                $('#etree').tree('append', {
+								$('#etree').tree('append', {
 									parent: node.target,
 									data: newData
 								});
@@ -701,13 +692,13 @@
 								$('#etree').tree('remove', node.target);
 
 								if (version === '3') {
-                                    var isLeaf = $('#etree').tree('isLeaf', pnode.target);
-                                    if (isLeaf && pnode.text !== separator) {
-                                        $('#etree').tree('update', {
-                                            target: pnode.target,
-                                            iconCls: 'icon-text'
-                                        });
-                                    }
+									var isLeaf = $('#etree').tree('isLeaf', pnode.target);
+									if (isLeaf && pnode.text !== separator) {
+										$('#etree').tree('update', {
+											target: pnode.target,
+											iconCls: 'icon-text'
+										});
+									}
 								}
 							} else {
 								$.messager.alert('Error', data, 'error');
@@ -771,17 +762,17 @@
 		}
 		
 		function changeTreeMode() {
-		    if (version === '2') {
-		        treeMode = 'path';
-                alertMessage('Etcd v2 only supports directory mode.');
+			if (version === '2') {
+				treeMode = 'path';
+				alertMessage('Etcd v2 only supports directory mode.');
 			} else {
-                if (treeMode === 'list') {
-                    treeMode = 'path';
-                } else {
-                    treeMode = 'list';
-                }
-                Cookies.set('tree-mode', treeMode, {expires: 30});
-                connect();
+				if (treeMode === 'list') {
+					treeMode = 'path';
+				} else {
+					treeMode = 'list';
+				}
+				Cookies.set('tree-mode', treeMode, {expires: 30});
+				connect();
 			}
 		}
 		
