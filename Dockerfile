@@ -1,7 +1,7 @@
-FROM golang:1.12 as build
+FROM harbor.hxsf.work/library/golang:1.12-alpine3.10 as build
 
 ENV GO111MODULE on
-ENV GOPROXY "https://goproxy.io"
+ENV GOPROXY "https://goproxy.cn"
 
 WORKDIR /opt
 RUN mkdir etcdkeeper
@@ -27,4 +27,5 @@ ADD assets assets
 
 EXPOSE ${PORT}
 
-ENTRYPOINT ./etcdkeeper.bin -h $HOST -p $PORT
+ENTRYPOINT ["./etcdkeeper.bin"]
+CMD ["-h", "$HOST", "-p", "$PORT"]
