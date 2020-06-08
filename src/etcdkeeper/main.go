@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -974,6 +975,7 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 		Endpoints:            endpoints,
 		DialTimeout:          time.Second * time.Duration(*connectTimeout),
 		TLS:                  tlsConfig,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	if *useAuth {
 		conf.Username = uinfo.uname
@@ -1043,6 +1045,7 @@ func getInfo(host string) map[string]string {
 		return info
 	}
 	defer rootClient.Close()
+
 
 	status, err := rootClient.Status(context.Background(), host)
 	if err != nil {
