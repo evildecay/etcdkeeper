@@ -148,7 +148,7 @@
 
 		var timeout = 5000 // milliseconds
 		var separator = '';
-		var serverBase = '/v3';
+		var serverBase = '../v3';
 		var etcdBase = Cookies.get('etcd-endpoint');
 		if(typeof(etcdBase) === 'undefined') {
 			etcdBase = '127.0.0.1:2379';
@@ -194,10 +194,10 @@
         function setServerBase(ver) {
             if (ver === '3') {
                 $('#ver').html('v3');
-                serverBase = '/v3';
+                serverBase = '../v3';
             } else {
                 $('#ver').html('v2');
-                serverBase = '/v2';
+                serverBase = '../v2';
             }
         }
 
