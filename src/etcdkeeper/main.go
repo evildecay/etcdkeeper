@@ -84,7 +84,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rootPath := filepath.Dir(wd)
+	exStat, err := os.Lstat(wd)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	readWd := wd
+	// check if executable path is symlink
+	if exStat.Mode()&os.ModeSymlink != 0 {
+		// if symlink evaluate it to get real path
+		readWd, err = filepath.EvalSymlinks(wd)
+		if err != nil {
+			log.Printf("failed evaluating executable symlink path (%s).\netcdkeeper will use symlink for loading asset", wd)
+		}
+	}
+
+	rootPath := filepath.Dir(readWd)
 
 	// Session management
 	sessmgr, err = session.NewManager("memory", "_etcdkeeper_session", 86400)
