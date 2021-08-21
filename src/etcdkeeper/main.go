@@ -34,11 +34,12 @@ var (
 	keyfile        = flag.String("key", "", "identify secure client using this TLS key file (v3)")
 	useAuth        = flag.Bool("auth", false, "use auth")
 	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
+	grpcMaxMsgSize = flag.Int("grpcMaxMsgSize", 64*1024*1024, "ETCDv3 grpc client max receive msg size")
 	rootUsers      = make(map[string]*userInfo) // host:rootUser
 	rootUesrsV2    = make(map[string]*userInfo) // host:rootUser
 
-	sessmgr   *session.Manager
-	mu        sync.Mutex
+	sessmgr *session.Manager
+	mu      sync.Mutex
 )
 
 type userInfo struct {
@@ -112,7 +113,7 @@ func main() {
 	})
 	//log.Println(http.Dir(rootPath + "/assets"))
 
-	http.Handle("/", http.FileServer(http.Dir(rootPath + "/assets"))) // view static directory
+	http.Handle("/", http.FileServer(http.Dir(rootPath+"/assets"))) // view static directory
 
 	log.Printf("listening on %s:%d\n", *host, *port)
 	err = http.ListenAndServe(*host+":"+strconv.Itoa(*port), nil)
@@ -987,10 +988,10 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 	}
 
 	conf := clientv3.Config{
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		Endpoints:   endpoints,
 		TLS:         tlsConfig,
 		DialTimeout: time.Second * time.Duration(*connectTimeout),
+		DialOptions: []grpc.DialOption{grpc.WithBlock(), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(*grpcMaxMsgSize))},
 	}
 	if *useAuth {
 		conf.Username = uinfo.uname
