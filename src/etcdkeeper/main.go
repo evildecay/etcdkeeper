@@ -126,33 +126,6 @@ func nothing(_ http.ResponseWriter, _ *http.Request) {
 	// Nothing
 }
 
-//func v2request(w http.ResponseWriter, r *http.Request){
-//	if err := r.ParseForm(); err != nil {
-//		log.Println(err.Error())
-//	}
-//	log.Println(r.Method, "v2", r.FormValue("url"), r.PostForm.Encode())
-//
-//	body := strings.NewReader(r.PostForm.Encode())
-//	req, err := http.NewRequest(r.Method, r.Form.Get("url"), body)
-//	if err != nil {
-//		io.WriteString(w, err.Error())
-//		return
-//	}
-//	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-//	client := &http.Client{Timeout: 10*time.Second} // important!!!
-//	resp, err := client.Do(req)
-//	if err != nil {
-//		io.WriteString(w, err.Error())
-//	}else {
-//		result, err := ioutil.ReadAll(resp.Body)
-//		if err != nil {
-//			io.WriteString(w, "Get data failed: " + err.Error())
-//		} else {
-//			io.WriteString(w, string(result))
-//		}
-//	}
-//}
-
 // v2 api
 func connectV2(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
