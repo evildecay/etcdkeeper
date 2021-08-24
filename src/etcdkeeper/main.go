@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"embed"
 	"encoding/json"
 	"etcdkeeper/session"
 	_ "etcdkeeper/session/providers/memory"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -48,6 +49,9 @@ type userInfo struct {
 	passwd string
 }
 
+//go:embed assets/*
+var assets embed.FS
+
 func main() {
 	host := flag.String("h", "0.0.0.0", "host name or ip address")
 	port := flag.Int("p", 8080, "port")
@@ -82,28 +86,8 @@ func main() {
 	// dirctory mode
 	http.HandleFunc("/v3/getpath", middleware(nothing, getPath))
 
-	wd, err := os.Executable()
-	if err != nil {
-		log.Fatal(err)
-	}
-	exStat, err := os.Lstat(wd)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	readWd := wd
-	// check if executable path is symlink
-	if exStat.Mode()&os.ModeSymlink != 0 {
-		// if symlink evaluate it to get real path
-		readWd, err = filepath.EvalSymlinks(wd)
-		if err != nil {
-			log.Printf("failed evaluating executable symlink path (%s).\netcdkeeper will use symlink for loading asset", wd)
-		}
-	}
-
-	rootPath := filepath.Dir(readWd)
-
-	// Session management
+	var err error
+	// Session managment
 	sessmgr, err = session.NewManager("memory", "_etcdkeeper_session", 86400)
 	if err != nil {
 		log.Fatal(err)
@@ -111,10 +95,17 @@ func main() {
 	time.AfterFunc(86400*time.Second, func() {
 		sessmgr.GC()
 	})
-	//log.Println(http.Dir(rootPath + "/assets"))
 
-	http.Handle("/", http.FileServer(http.Dir(rootPath+"/assets"))) // view static directory
+	// static directory server
+	staticFS, err := fs.Sub(assets, "assets/static")
+	if err != nil {
+		log.Fatalf("Fail to load static assets resource directory : %v", err)
+	}
+	staticHandler := http.FileServer(http.FS(staticFS))
 
+	http.HandleFunc("/", middleware(nothing, staticHandler.ServeHTTP))
+
+	// listening
 	log.Printf("listening on %s:%d\n", *host, *port)
 	err = http.ListenAndServe(*host+":"+strconv.Itoa(*port), nil)
 	if err != nil {
@@ -666,6 +657,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 	sess := sessmgr.SessionStart(w, r)
 	v := sess.Get("uinfo")
 	var uinfo *userInfo
+
 	if v != nil {
 		uinfo = v.(*userInfo)
 		cli, _ = newClient(uinfo)
