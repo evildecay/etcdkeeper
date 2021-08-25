@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"embed"
 	"encoding/json"
+	"etcdkeeper/internal"
 	"etcdkeeper/session"
 	_ "etcdkeeper/session/providers/memory"
 	"flag"
@@ -43,6 +44,9 @@ var (
 	mu      sync.Mutex
 )
 
+type etcdkeeperConfig struct {
+}
+
 type userInfo struct {
 	host   string
 	uname  string
@@ -61,8 +65,14 @@ func main() {
 
 	middleware := func(fns ...func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// avoid calling superfluous write on ResponseWriter
+			cw := internal.NewCompletableResponseWriter(w)
+
 			for _, fn := range fns {
-				fn(w, r)
+				if cw.IsCompleted() {
+					break
+				}
+				fn(cw, r)
 			}
 		}
 	}
@@ -102,8 +112,13 @@ func main() {
 		log.Fatalf("Fail to load static assets resource directory : %v", err)
 	}
 	staticHandler := http.FileServer(http.FS(staticFS))
+	templateFS, err := fs.Sub(assets, "assets/templates")
+	if err != nil {
+		log.Fatalf("Fail to load templates assets resource directory : %v", err)
+	}
+	templateHandler := internal.NewTemplateServer(templateFS, &etcdkeeperConfig{})
 
-	http.HandleFunc("/", middleware(nothing, staticHandler.ServeHTTP))
+	http.HandleFunc("/", middleware(templateHandler.ServeHTTP, staticHandler.ServeHTTP))
 
 	// listening
 	log.Printf("listening on %s:%d\n", *host, *port)

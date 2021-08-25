@@ -22,7 +22,6 @@ RUN addgroup -S etcdkeeper && \
 
 WORKDIR /opt/etcdkeeper
 COPY --from=build --chown=etcdkeeper:etcdkeeper /app/etcdkeeper .
-ADD --chown=etcdkeeper:etcdkeeper assets assets
 
 EXPOSE ${PORT}
 USER etcdkeeper
