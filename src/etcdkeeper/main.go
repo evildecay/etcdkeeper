@@ -19,8 +19,8 @@ func main() {
 	etcdkeeperConfig := &etcdkeeper.EtcdkeeperConfig{}
 	etcdkeeperConfig.ParseFlag()
 
-	host := flag.String("h", "0.0.0.0", "host name or ip address")
-	port := flag.Int("p", 8080, "port")
+	host := flag.String("h", "0.0.0.0", "etcdkeeper listen hostname or ip address")
+	port := flag.Int("p", 8080, "etcdkeeper listen port")
 
 	flag.CommandLine.Parse(os.Args[1:])
 
