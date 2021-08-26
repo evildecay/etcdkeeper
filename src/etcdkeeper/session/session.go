@@ -41,7 +41,7 @@ func Register(name string, provide Provider) {
 }
 
 type Manager struct {
-	cookieName  string     //private cookiename
+	cookieName  string     // private cookiename
 	lock        sync.Mutex // protects session
 	provider    Provider
 	maxlifetime int64

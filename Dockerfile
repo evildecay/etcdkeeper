@@ -1,30 +1,30 @@
-FROM golang:1.12 as build
+FROM golang:1.17-alpine3.14 as build
 
-ENV GO111MODULE on
-ENV GOPROXY "https://goproxy.io"
+WORKDIR /app
+ADD . /app
+WORKDIR /app/src/etcdkeeper
 
-WORKDIR /opt
-RUN mkdir etcdkeeper
-ADD . /opt/etcdkeeper
-WORKDIR /opt/etcdkeeper/src/etcdkeeper
+ENV CGO_ENABLED=0
 
-RUN go mod download \
-    && go build -o etcdkeeper.bin main.go
+RUN go mod download
+RUN go build -o ../../etcdkeeper -ldflags='-w -s' -a -tags netgo -installsuffix netgo main.go
 
-
-FROM alpine:3.10
+FROM alpine:3.14.1
 
 ENV HOST="0.0.0.0"
 ENV PORT="8080"
 
-# RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates
 
-RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+# Create a user 'etcdkeeper' member of group 'etcdkeeper'
+RUN addgroup -S etcdkeeper && \
+    adduser -S -D -h /etcdkeeper -G etcdkeeper etcdkeeper
 
 WORKDIR /opt/etcdkeeper
-COPY --from=build /opt/etcdkeeper/src/etcdkeeper/etcdkeeper.bin .
-ADD assets assets
+COPY --from=build --chown=etcdkeeper:etcdkeeper /app/etcdkeeper .
 
 EXPOSE ${PORT}
+USER etcdkeeper
 
-ENTRYPOINT ./etcdkeeper.bin -h $HOST -p $PORT
+ENTRYPOINT ["./etcdkeeper"]
+CMD "-h $HOST -p $PORT"
