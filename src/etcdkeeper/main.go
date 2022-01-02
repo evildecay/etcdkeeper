@@ -11,6 +11,7 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/transport"
+	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net/http"
@@ -21,7 +22,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -448,10 +448,25 @@ func getClientV2(w http.ResponseWriter, r *http.Request) client.Client {
 }
 
 func newClientV2(uinfo *userInfo) (client.Client, error) {
+	var transportConf client.CancelableTransport = nil
+	if *usetls {
+		tlsInfo := transport.TLSInfo{
+			CertFile:      *cert,
+			KeyFile:       *keyfile,
+			TrustedCAFile: *cacert,
+		}
+		conf,err := transport.NewTransport(tlsInfo,time.Second * time.Duration(*connectTimeout))
+		if err == nil{
+			transportConf = conf
+		}
+	}
 	cfg := client.Config{
 		Endpoints:               []string{uinfo.host},
 		HeaderTimeoutPerRequest: time.Second * time.Duration(*connectTimeout),
+		Transport: transportConf,
 	}
+
+
 	if *useAuth {
 		cfg.Username = uinfo.uname
 		cfg.Password = uinfo.passwd
