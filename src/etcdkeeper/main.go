@@ -35,7 +35,7 @@ var (
 	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
 	sendMsgSize    = flag.Int("sendMsgSize", 2*1024*1024, "ETCD client max send msg size")
 	rootUsers      = make(map[string]*userInfo) // host:rootUser
-	rootUesrsV2    = make(map[string]*userInfo) // host:rootUser
+	rootUsersV2    = make(map[string]*userInfo) // host:rootUser
 
 	sessmgr *session.Manager
 	mu      sync.Mutex
@@ -150,7 +150,7 @@ func connectV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if *useAuth {
-		_, ok := rootUesrsV2[host]
+		_, ok := rootUsersV2[host]
 		if !ok && uname != "root" {
 			b, _ := json.Marshal(map[string]interface{}{"status": "root"})
 			io.WriteString(w, string(b))
@@ -184,10 +184,10 @@ func connectV2(w http.ResponseWriter, r *http.Request) {
 
 	if *useAuth {
 		if uname == "root" {
-			rootUesrsV2[host] = uinfo
+			rootUsersV2[host] = uinfo
 		}
 	} else {
-		rootUesrsV2[host] = uinfo
+		rootUsersV2[host] = uinfo
 	}
 	log.Println(r.Method, "v2", "connect success.")
 	info := getInfoV2(host)
@@ -489,7 +489,7 @@ func getPermissionPrefixV2(host, uname, key string) ([][]string, error) {
 		if !strings.HasPrefix(host, "http://") {
 			host = "http://" + host
 		}
-		rootUser := rootUesrsV2[host]
+		rootUser := rootUsersV2[host]
 		rootCli, err := newClientV2(rootUser)
 		if err != nil {
 			return nil, err
@@ -550,7 +550,7 @@ func getInfoV2(host string) map[string]string {
 		host = "http://" + host
 	}
 	info := make(map[string]string)
-	uinfo, ok := rootUesrsV2[host]
+	uinfo, ok := rootUsersV2[host]
 	if ok {
 		rootClient, err := newClientV2(uinfo)
 		if err != nil {
