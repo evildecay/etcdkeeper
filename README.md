@@ -29,6 +29,10 @@
         use etcd auth
   -timeout int
         ETCD client connect timeout
+  -basicAuthPass string
+        basic auth pass
+  -basicAuthUser string
+        basic auth user
 ```
 * Open your browser and enter the address: http://127.0.0.1:8080/etcdkeeper
 * Click on the version of the title to select the version of ETCD. The default is V3. Reopening will remember your choice.
