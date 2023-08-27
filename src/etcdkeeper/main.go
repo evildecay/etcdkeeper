@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
 	"etcdkeeper/session"
@@ -25,6 +26,8 @@ import (
 )
 
 var (
+	basicAuthUser  = flag.String("basicAuthUser", "", "basic auth user")
+	basicAuthPass  = flag.String("basicAuthPass", "", "basic auth pass")
 	sep            = flag.String("sep", "/", "separator")
 	separator      = ""
 	usetls         = flag.Bool("usetls", false, "use tls")
@@ -55,11 +58,15 @@ func main() {
 	separator = *sep
 
 	middleware := func(fns ...func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-		return func(w http.ResponseWriter, r *http.Request) {
+
+		next := func(w http.ResponseWriter, r *http.Request) {
+
 			for _, fn := range fns {
 				fn(w, r)
 			}
 		}
+
+		return basicAuth(next)
 	}
 
 	// v2
@@ -95,9 +102,9 @@ func main() {
 	time.AfterFunc(86400*time.Second, func() {
 		sessmgr.GC()
 	})
-	//log.Println(http.Dir(rootPath + "/assets"))
+	log.Println(http.Dir(rootPath + "/assets"))
 
-	http.Handle("/", http.FileServer(http.Dir(rootPath+"/assets"))) // view static directory
+	//http.Handle("/", http.FileServer(http.Dir(rootPath+"/assets"))) // view static directory
 
 	log.Printf("listening on %s:%d\n", *host, *port)
 	err = http.ListenAndServe(*host+":"+strconv.Itoa(*port), nil)
@@ -108,6 +115,29 @@ func main() {
 
 func nothing(_ http.ResponseWriter, _ *http.Request) {
 	// Nothing
+}
+
+func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
+
+	username := *basicAuthUser
+	password := *basicAuthPass
+	if len(username) == 0 || len(password) == 0 {
+		return handler
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		user, pass, ok := r.BasicAuth()
+
+		if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Please enter your username and password for this site"`)
+			w.WriteHeader(401)
+			w.Write([]byte("Unauthorised.\n"))
+			return
+		}
+
+		handler(w, r)
+	}
 }
 
 //func v2request(w http.ResponseWriter, r *http.Request){
