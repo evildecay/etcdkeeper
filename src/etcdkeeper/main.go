@@ -4,14 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"etcdkeeper/session"
-	_ "etcdkeeper/session/providers/memory"
 	"flag"
 	"fmt"
-	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/transport"
-	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net/http"
@@ -22,6 +16,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"etcdkeeper/session"
+	_ "etcdkeeper/session/providers/memory"
+	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -31,6 +32,7 @@ var (
 	cacert         = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle (v3)")
 	cert           = flag.String("cert", "", "identify secure client using this TLS certificate file (v3)")
 	keyfile        = flag.String("key", "", "identify secure client using this TLS key file (v3)")
+	skiptls        = flag.Bool("skiptls", false, "skip verify tls")
 	useAuth        = flag.Bool("auth", false, "use auth")
 	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
 	sendMsgSize    = flag.Int("sendMsgSize", 2*1024*1024, "ETCD client max send msg size")
@@ -451,9 +453,10 @@ func newClientV2(uinfo *userInfo) (client.Client, error) {
 	var transportConf client.CancelableTransport = nil
 	if *usetls {
 		tlsInfo := transport.TLSInfo{
-			CertFile:      *cert,
-			KeyFile:       *keyfile,
-			TrustedCAFile: *cacert,
+			CertFile:           *cert,
+			KeyFile:            *keyfile,
+			TrustedCAFile:      *cacert,
+			InsecureSkipVerify: *skiptls,
 		}
 		conf, err := transport.NewTransport(tlsInfo, time.Second*time.Duration(*connectTimeout))
 		if err == nil {
@@ -975,9 +978,10 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 	var tlsConfig *tls.Config
 	if *usetls {
 		tlsInfo := transport.TLSInfo{
-			CertFile:      *cert,
-			KeyFile:       *keyfile,
-			TrustedCAFile: *cacert,
+			CertFile:           *cert,
+			KeyFile:            *keyfile,
+			TrustedCAFile:      *cacert,
+			InsecureSkipVerify: *skiptls,
 		}
 		tlsConfig, err = tlsInfo.ClientConfig()
 		if err != nil {

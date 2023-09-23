@@ -12,7 +12,7 @@ RUN go mod download \
     && go build -o etcdkeeper.bin main.go
 
 
-FROM alpine:3.10
+FROM alpine:3.18
 
 ENV HOST="0.0.0.0"
 ENV PORT="8080"
