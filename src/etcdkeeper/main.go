@@ -8,10 +8,6 @@ import (
 	_ "etcdkeeper/session/providers/memory"
 	"flag"
 	"fmt"
-	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/transport"
-	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net/http"
@@ -22,6 +18,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -34,6 +35,7 @@ var (
 	useAuth        = flag.Bool("auth", false, "use auth")
 	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
 	sendMsgSize    = flag.Int("sendMsgSize", 2*1024*1024, "ETCD client max send msg size")
+	readonly       = flag.Bool("readonly", false, "readonly mode")
 	rootUsers      = make(map[string]*userInfo) // host:rootUser
 	rootUesrsV2    = make(map[string]*userInfo) // host:rootUser
 
@@ -53,6 +55,10 @@ func main() {
 
 	flag.CommandLine.Parse(os.Args[1:])
 	separator = *sep
+
+	if *readonly {
+		log.Println("Running in readonly mode")
+	}
 
 	middleware := func(fns ...func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -201,6 +207,10 @@ func putV2(w http.ResponseWriter, r *http.Request) {
 	ttl := r.FormValue("ttl")
 	dir := r.FormValue("dir")
 	log.Println("PUT", "v2", key)
+
+	if isBlockedOnReadOnlyMode(w) {
+		return
+	}
 
 	kapi := client.NewKeysAPI(getClientV2(w, r))
 
@@ -413,6 +423,10 @@ func delV2(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	dir := r.FormValue("dir")
 	log.Println("DELETE", "v2", key)
+
+	if isBlockedOnReadOnlyMode(w) {
+		return
+	}
 
 	kapi := client.NewKeysAPI(getClientV2(w, r))
 
@@ -636,8 +650,13 @@ func put(w http.ResponseWriter, r *http.Request) {
 	ttl := r.FormValue("ttl")
 	log.Println("PUT", "v3", key)
 
+	if isBlockedOnReadOnlyMode(w) {
+		return
+	}
+
 	var err error
 	data := make(map[string]interface{})
+
 	if ttl != "" {
 		var sec int64
 		sec, err = strconv.ParseInt(ttl, 10, 64)
@@ -927,6 +946,10 @@ func del(w http.ResponseWriter, r *http.Request) {
 	dir := r.FormValue("dir")
 	log.Println("DELETE", "v3", key)
 
+	if isBlockedOnReadOnlyMode(w) {
+		return
+	}
+
 	if _, err := cli.Delete(context.Background(), key); err != nil {
 		io.WriteString(w, err.Error())
 		return
@@ -1104,4 +1127,27 @@ func getInfo(host string) map[string]string {
 
 func size(num int, unit int) (n, rem int) {
 	return num / unit, num - (num/unit)*unit
+}
+
+func isBlockedOnReadOnlyMode(w http.ResponseWriter) bool {
+	if !*readonly {
+		return false
+	}
+
+	log.Println("Operation not allowed - running in readonly mode")
+
+	data := make(map[string]interface{})
+	data["errorCode"] = 403
+	data["message"] = "Operation not allowed - running in readonly mode"
+
+	var dataByte []byte
+	var err error
+
+	if dataByte, err = json.Marshal(data); err != nil {
+		io.WriteString(w, err.Error())
+	} else {
+		io.WriteString(w, string(dataByte))
+	}
+
+	return true
 }
