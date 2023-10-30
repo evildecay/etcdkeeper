@@ -19,3 +19,7 @@ bin
 # Package Files
 *.war
 *.ear
+
+src/etcdkeeper/__debug_bin
+src/etcdkeeper/assets
+src/etcdkeeper/etcdkeeper.bin
