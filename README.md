@@ -10,25 +10,29 @@
 * Run etcdkeeper.exe -auth (If enable etcd authentication)
 * [Download other platform releases](https://github.com/evildecay/etcdkeeper/releases).
 ```
-  Usage of etcdkeeper.exe:
+Usage of D:\Applications\etcdkeeper\etcdkeeper.exe:
+  -auth
+        use auth
+  -cacert string
+        verify certificates of TLS-enabled secure servers using this CA bundle (v3)
+  -cert string
+        identify secure client using this TLS certificate file (v3)
   -h string
-        host name or ip address (default: "0.0.0.0", the http server addreess, not etcd address)
+        host name or ip address (default "0.0.0.0")
+  -key string
+        identify secure client using this TLS key file (v3)
   -p int
         port (default 8080)
+  -sendMsgSize int
+        ETCD client max send msg size (default 2097152)
   -sep string
-        Separator (default "/")
-  -usetls
-        use tls (only v3)
-  -cacert string
-        verify certificates of TLS-enabled secure servers using this CA bundle (only v3)
-  -cert string
-        identify secure client using this TLS certificate file (only v3)
-  -key string
-        identify secure client using this TLS key file (only v3)
-  -auth bool
-        use etcd auth
+        separator (default "/")
+  -skiptls
+        skip verify tls
   -timeout int
-        ETCD client connect timeout
+        ETCD client connect timeout (default 5)
+  -usetls
+        use tls
 ```
 * Open your browser and enter the address: http://127.0.0.1:8080/etcdkeeper
 * Click on the version of the title to select the version of ETCD. The default is V3. Reopening will remember your choice.
@@ -36,8 +40,8 @@
 * Get data based on etcd user permissions.
   - Just display the list according to the configured permissions, and there will be time to add the configuration permission features.
   - Each time you restart etcdkeeper, you need to enter the root username and password for each etcd server address. 
-  - [enable etcdv3 authentication](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/authentication.md)
-  - [enable etcdv2 authentication](https://github.com/etcd-io/etcd/blob/master/Documentation/v2/authentication.md)
+  - [enable etcdv3 authentication](https://etcd.io/docs/v3.5/op-guide/authentication/authentication/)
+  - [enable etcdv2 authentication](https://etcd.io/docs/v2.3/authentication/)
 * Display the status information of etcd, version, data size.
 * Etcd address can be modified by default to the localhost. If you change, press the Enter key to take effect.
 
