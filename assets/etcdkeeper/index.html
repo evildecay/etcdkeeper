@@ -3,19 +3,19 @@
 <head>
 	<meta charset="UTF-8">
 	<title>ETCD Keeper</title>
-	<link rel="shortcut icon" href="../framework/favicon.ico">
-	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/metro/easyui.css">
-	<link rel="stylesheet" type="text/css" href="../framework/easyui/themes/icon.css">
-	<link rel="stylesheet" type="text/css" href="../framework/custom/css/style.css">
+	<link rel="shortcut icon" href="../etcdkeeper/framework/favicon.ico">
+	<link rel="stylesheet" type="text/css" href="../etcdkeeper/framework/easyui/themes/metro/easyui.css">
+	<link rel="stylesheet" type="text/css" href="../etcdkeeper/framework/easyui/themes/icon.css">
+	<link rel="stylesheet" type="text/css" href="../etcdkeeper/framework/custom/css/style.css">
 	<!-- 此行代码解决ie8中iframe里嵌套此页面会导致jquery错误-->
 	<script>document.documentElement.focus();</script>
-	<script type="text/javascript" src="../framework/easyui/jquery.min.js"></script>
-	<script type="text/javascript" src="../framework/easyui/jquery.easyui.min.js"></script>
-	<script type="text/javascript" src="../framework/easyui/locale/easyui-lang-en.js"></script>
-	<script type="text/javascript" src="../framework/jquery/jquery.json-2.2.js"></script>
-	<script type="text/javascript" src="../framework/custom/js/common.js"></script>
-	<script type="text/javascript" src="../framework/js.cookie-2.1.4.min.js"></script>
-	<script type="text/javascript" src="../framework/ace/ace.js" charset="utf-8"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/easyui/jquery.min.js"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/easyui/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/easyui/locale/easyui-lang-en.js"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/jquery/jquery.json-2.2.js"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/custom/js/common.js"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/js.cookie-2.1.4.min.js"></script>
+	<script type="text/javascript" src="../etcdkeeper/framework/ace/ace.js" charset="utf-8"></script>
 	<style>
 		#value {
 			position: absolute;
@@ -29,9 +29,9 @@
 	</style>
 </head>
 <body style="overflow: hidden;">
-	<h2><img src="../framework/logo.png" width="20" style="position:relative;top:3px;"></img><font color="00a0e9"> ETCD</font> Keeper <span id="ver" style="border: 1px solid #D4D4D4;border-radius: 5px;cursor:pointer;">v3</span></h2>
+	<h2><img src="../etcdkeeper/framework/logo.png" width="20" style="position:relative;top:3px;"></img><font color="00a0e9"> ETCD</font> Keeper <span id="ver" style="border: 1px solid #D4D4D4;border-radius: 5px;cursor:pointer;">v3</span></h2>
 	<div class="noborder">
-		<img id="userButton" src="../framework/easyui/themes/icons/user.png" width="20" style="position:relative;top:7px;cursor:pointer;"></img>
+		<img id="userButton" src="../etcdkeeper/framework/easyui/themes/icons/user.png" width="20" style="position:relative;top:7px;cursor:pointer;"></img>
 		<input id="etcdAddr" class="easyui-textbox" data-options="prompt:'127.0.0.1:2379',onChange:changeHost,iconCls:'icon-server',iconAlign:'left'" style="width:360px;height:30px;"/>
 	</div>
 	<div style="margin:20px 0;"></div>
@@ -117,7 +117,7 @@
 		<span id="statusVersion"></span>
 		<span id="statusSize" style="margin-left: 10px;"></span>
 		<span id="statusMember" style="margin-left: 10px;"></span>
-		<span style="margin-left: 10px;">ETCD Keeper 0.7.6</span>
+		<span style="margin-left: 10px;">ETCD Keeper 0.7.7</span>
 	</div>
 	
 	<div id="modeMenu" style="">
@@ -298,12 +298,12 @@
 					}
 					if (data.info) {
 						$('#statusVersion').html('ETCD version:' + data.info.version);
-						$('#statusSize').html('Size:' + data.info.size)
-						$('#statusMember').html('Member name:' + data.info.name)
+						$('#statusSize').html('Size:' + data.info.size);
+						$('#statusMember').html('Member name:' + data.info.name);
 					} else {
 						$('#statusVersion').html('');
-						$('#statusSize').html('')
-						$('#statusMember').html('')
+						$('#statusSize').html('');
+						$('#statusMember').html('');
 					}
 				},
 				error: function(err) {

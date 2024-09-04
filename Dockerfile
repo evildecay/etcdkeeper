@@ -1,7 +1,7 @@
 FROM golang:1.12 as build
 
 ENV GO111MODULE on
-ENV GOPROXY "https://goproxy.io"
+ENV GOPROXY "https://goproxy.cn"
 
 WORKDIR /opt
 RUN mkdir etcdkeeper

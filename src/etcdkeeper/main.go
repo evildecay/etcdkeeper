@@ -8,10 +8,9 @@ import (
 	_ "etcdkeeper/session/providers/memory"
 	"flag"
 	"fmt"
-	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/transport"
-	"google.golang.org/grpc"
+	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/client/v3"
 	"io"
 	"log"
 	"net/http"
@@ -28,6 +27,7 @@ var (
 	sep            = flag.String("sep", "/", "separator")
 	separator      = ""
 	usetls         = flag.Bool("usetls", false, "use tls")
+	skiptls = flag.Bool("skiptls", false, "skip verify tls")
 	cacert         = flag.String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle (v3)")
 	cert           = flag.String("cert", "", "identify secure client using this TLS certificate file (v3)")
 	keyfile        = flag.String("key", "", "identify secure client using this TLS key file (v3)")
@@ -451,9 +451,10 @@ func newClientV2(uinfo *userInfo) (client.Client, error) {
 	var transportConf client.CancelableTransport = nil
 	if *usetls {
 		tlsInfo := transport.TLSInfo{
-			CertFile:      *cert,
-			KeyFile:       *keyfile,
-			TrustedCAFile: *cacert,
+			CertFile:           *cert,
+			KeyFile:            *keyfile,
+			TrustedCAFile:      *cacert,
+			InsecureSkipVerify: *skiptls,
 		}
 		conf, err := transport.NewTransport(tlsInfo, time.Second*time.Duration(*connectTimeout))
 		if err == nil {
@@ -798,7 +799,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 
 		permissions, e := getPermissionPrefix(uinfo.host, uinfo.uname, originKey)
 		if e != nil {
-			io.WriteString(w, e.Error())
+			io.WriteString(w, fmt.Sprintf("get permission error: %s", e.Error()))
 			return
 		}
 
@@ -845,7 +846,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 			}
 			if err != nil {
 				data["errorCode"] = 500
-				data["message"] = err.Error()
+				data["message"] = fmt.Sprintf("get %s error: %s", key, err.Error())
 				dataByte, _ := json.Marshal(data)
 				io.WriteString(w, string(dataByte))
 				return
@@ -975,9 +976,10 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 	var tlsConfig *tls.Config
 	if *usetls {
 		tlsInfo := transport.TLSInfo{
-			CertFile:      *cert,
-			KeyFile:       *keyfile,
-			TrustedCAFile: *cacert,
+			CertFile:           *cert,
+			KeyFile:            *keyfile,
+			TrustedCAFile:      *cacert,
+			InsecureSkipVerify: *skiptls,
 		}
 		tlsConfig, err = tlsInfo.ClientConfig()
 		if err != nil {
@@ -989,8 +991,8 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 		Endpoints:          endpoints,
 		DialTimeout:        time.Second * time.Duration(*connectTimeout),
 		TLS:                tlsConfig,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 		MaxCallSendMsgSize: *sendMsgSize,
+		//DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 	}
 	if *useAuth {
 		conf.Username = uinfo.uname
