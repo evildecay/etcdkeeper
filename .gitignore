@@ -7,6 +7,7 @@ _test
 .idea
 pkg
 bin
+release
 *.tmp
 
 # Architecture specific extensions/prefixes

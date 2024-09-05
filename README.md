@@ -56,6 +56,10 @@ Usage of D:\Applications\etcdkeeper\etcdkeeper.exe:
 ## Special Note
 Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
 
+## Compile source code and release
+* Run in Windows development environment: `build.bat`  `release.bat`
+* Run in Posix development environment: `build.sh`  `release.sh`
+
 ## Docker
 Etdkeeper official image. (https://hub.docker.com/r/evildecay/etcdkeeper)
 
