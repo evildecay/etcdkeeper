@@ -10,8 +10,8 @@ import (
 var pder = &Provider{list: list.New()}
 
 type SessionStore struct {
-	sid          string                      //session id唯一标示	  	
-	timeAccessed time.Time                   //最后访问时间	  	
+	sid          string                      //session id唯一标示
+	timeAccessed time.Time                   //最后访问时间
 	value        map[interface{}]interface{} //session里面存储的值
 }
 
@@ -51,7 +51,7 @@ func (pder *Provider) SessionInit(sid string) (session.Session, error) {
 	defer pder.lock.Unlock()
 	v := make(map[interface{}]interface{}, 0)
 	newsess := &SessionStore{sid: sid, timeAccessed: time.Now(), value: v}
-	element := pder.list.PushBack(newsess)
+	element := pder.list.PushFront(newsess)
 	pder.sessions[sid] = element
 	return newsess, nil
 }
