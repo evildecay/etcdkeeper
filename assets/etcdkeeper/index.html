@@ -43,7 +43,7 @@
 			<div id="value"></div>
 		</div>
 	</div>
-	
+
 	<div id="footer" style="padding:5px;color:#777;">&nbsp;</div>
 	<div id="westTools">
 		<a href="javascript:void(0)" class="icon-path" style="margin-right:4px;" onclick="changeTreeMode();" title="Tree mode"></a>
@@ -61,7 +61,7 @@
 	<div id="treeNodeMenu" class="easyui-menu" style="width:150px;">
 		<div onclick="removeNode()" data-options="iconCls:'icon-remove'">Remove Node</div>
 	</div>
-	
+
 	<div id="cnode" class="easyui-window" title="Create node" data-options="modal:true,closed:true" style="width:650px;height:480px;padding:10px;">
 		<div style="padding:10px 40px 20px 40px">
 			<form id="cnodeForm">
@@ -94,7 +94,7 @@
 			</div>
 	    </div>
 	</div>
-	
+
 	<div id="userinfo" class="easyui-window" title="Authentication" data-options="modal:true,closed:true" style="width:350px;height:220px;padding:10px;">
 		<div style="padding:10px 40px 20px 40px">
 			<table cellpadding="10">
@@ -119,7 +119,7 @@
 		<span id="statusMember" style="margin-left: 10px;"></span>
 		<span style="margin-left: 10px;">ETCD Keeper 0.7.7</span>
 	</div>
-	
+
 	<div id="modeMenu" style="">
 		<div id="mode_text" onclick="changeMode('text')">text</div>
 		<div id="mode_toml" onclick="changeMode('toml')">toml</div>
@@ -135,13 +135,13 @@
         <div id="version_3" onclick="selVersion('3')">version 3</div>
         <div id="version_2" onclick="selVersion('2')">version 2</div>
     </div>
-	
+
 	<script>
 		resizeWindow();
 		$(window).resize(function(){ // FIXME: invalid
 			resizeWindow();
 		});
-		
+
 		function resizeWindow(){
 			$('#elayout').height(($(window).height() - 128) + 'px')
 		}
@@ -221,7 +221,7 @@
 		//if(typeof(autoFormat) === 'undefined') {
 			//autoFormat = 'false';
 		//}
-		
+
 		// get separator
 		$.ajax({
 			type: 'GET',
@@ -237,7 +237,7 @@
 				$.messager.alert('Error', $.toJSON(err), 'error');
 			}
 		});
-		
+
 		$(document).ready(function() {
 			editor.setTheme('ace/theme/github');
 			editor.getSession().setMode('ace/mode/' + aceMode);
@@ -248,7 +248,7 @@
                 iconCls: 'icon-ok'
             });
 		});
-		
+
 		function init() {
 			$('#etcdAddr').textbox('setValue', etcdBase);
 			var t = $('#etree').tree({
@@ -258,7 +258,7 @@
 				onContextMenu:showMenu
 			});
 		}
-		
+
 		function changeHost(newValue, oldValue) {
 			if (newValue === '') {
 				$.messager.alert('Error','ETCD address is empty.','error');
@@ -268,7 +268,7 @@
 				connect();
 			}
 		}
-		
+
 		function connect() {
 			var status = 'ok';
 			var uname = $('#uname').textbox('getValue');
@@ -310,7 +310,7 @@
 					$.messager.alert('Error', $.toJSON(err), 'error');
 				}
 			});
-			
+
 			if (status === 'ok') {
 				reload();
 			} else if (status === 'login') {
@@ -323,7 +323,7 @@
 				$('#etree').tree('loadData', []);
 			}
 		}
-		
+
 		function reload() {
 			var rootNode = {
 				id      : getId(),
@@ -339,14 +339,14 @@
 			showNode($('#etree').tree('getRoot'));
 			resetValue();
 		}
-		
+
 		function resetValue() {
 			$('#elayout').layout('panel','center').panel('setTitle', separator);
 			editor.getSession().setValue('');
 			editor.setReadOnly(false);
 			$('#footer').html('&nbsp;');
 		}
-		
+
 		function showNode(node) {
 			$('#elayout').layout('panel','center').panel('setTitle', node.path);
 			editor.getSession().setValue('');
@@ -396,7 +396,7 @@
 				// clear child node
 				var children = $('#etree').tree('getChildren', node.target);
 				//if (node.state === 'closed' || children.length === 0) {
-					
+
 				//}
 				var url = '';
 				if (treeMode === 'list') {
@@ -421,11 +421,11 @@
 								changeModeBySuffix(node.path);
 							}
 							var arr = [];
-							
-							if (data.node.nodes) {									
+
+							if (data.node.nodes) {
 								// refresh child node
 								for (var i in data.node.nodes) {
-									var newData = getNode(data.node.nodes[i]);	
+									var newData = getNode(data.node.nodes[i]);
 									arr.push(newData);
 								}
 								$('#etree').tree('append', {
@@ -437,7 +437,7 @@
 							for(var n in children) {
 								$('#etree').tree('remove', children[n].target);
 							}
-						} 
+						}
 					},
 					error: function(err) {
 						$.messager.alert('Error',$.toJSON(err),'error');
@@ -445,7 +445,7 @@
 				});
 			}
 		}
-		
+
 		function getNode(n) {
 			var text = '';
 			if (treeMode === 'list') {
@@ -475,7 +475,7 @@
 			}
 			return obj
 		}
-		
+
 		function showMenu(e, node) {
 			e.preventDefault();
 			$('#etree').tree('select',node.target);
@@ -497,7 +497,7 @@
 				top: e.pageY
 			});
 		}
-		
+
 		function saveValue() {
 			var node = $('#etree').tree('getSelected');
 			$.ajax({
@@ -525,19 +525,19 @@
 				}
 			});
 		}
-		
+
 		function createNode() {
 			var node = $('#etree').tree('getSelected');
 			var nodePath = node.path;
 			if (nodePath === separator) {
 				nodePath = ''
 			}
-			
+
 			if (treeMode == 'list') { // list mode
 				if ($('#cnodeForm').form('validate')) {
-					var createNodePath = $('#name').textbox('getValue');
+					var createNodePath = $('#name').textbox('getValue').trim();
 					if (!createNodePath.startsWith(separator)) {
-						createNodePath= separator + $('#name').textbox('getValue');
+						createNodePath= separator + $('#name').textbox('getValue').trim();
 					}
 					$.ajax({
 						type: 'PUT',
@@ -566,7 +566,7 @@
 								var objNode = nodeExist(obj.path);
 								if (objNode === null) {
 									newData.push(obj);
-								
+
 									$('#etree').tree('append', {
 										parent: node.target,
 										data: newData
@@ -585,13 +585,13 @@
 			} else { // dir mode
 				if ($('#cnodeForm').form('validate')) {
 					var pathArr = [];
-					var inputArr = $('#name').textbox('getValue').split(separator);
+					var inputArr = $('#name').textbox('getValue').trim().split(separator);
 					for (var i in inputArr) {
 						if ($.trim(inputArr[i]) != '') {
 							pathArr.push(inputArr[i]);
 						}
 					}
-					
+
 					$.ajax({
 						type: 'PUT',
 						timeout: timeout,
@@ -657,7 +657,7 @@
 									data: newData
 								});
 							}
-							
+
 							$('#cvalue').textbox('enable','none');
 							$('#cnodeForm').form('reset');
 							$('#ttl').numberbox('setValue', '');
@@ -669,7 +669,7 @@
 				}
 			}
 		}
-		
+
 		function nodeExist(p) {
 			for (var i=0;i<=idCount;i++) {
 				var node = $('#etree').tree('find', i);
@@ -679,7 +679,7 @@
 			}
 			return null;
 		}
-		
+
 		function removeNode() {
 			var node = $('#etree').tree('getSelected');
 			$.messager.confirm('Confirm', 'Remove ' + node.text + '?', function(r){
@@ -695,9 +695,9 @@
 							resetValue();
 							if (data === 'ok') {
 								alertMessage('Delete success.');
-								
+
 								var pnode = $('#etree').tree('getParent', node.target);
-								
+
 								$('#etree').tree('remove', node.target);
 
 								if (version === '3') {
@@ -720,7 +720,7 @@
 				}
 			});
 		}
-		
+
 		function selDir(item) {
 			if (item.value === 'true') {
 				$('#cvalue').textbox('disable','none');
@@ -728,7 +728,7 @@
 				$('#cvalue').textbox('enable','none');
 			}
 		}
-		
+
 		function alertMessage(msg) {
 			$.messager.show({
 				title:'Message',
@@ -741,11 +741,11 @@
 				}
 			});
 		}
-		
+
 		function getId() {
 			return idCount++;
 		}
-		
+
 		function changeMode(mode) {
 			aceMode = mode;
 			Cookies.set('ace-mode', aceMode, {expires: 30});
@@ -755,7 +755,7 @@
 			$('#mode_' + mode).append('<div id="' + curIconMode + '" class="menu-icon icon-ok"></div>');
 			$('#showMode').html(aceMode);
 		}
-		
+
 		function changeFooter(ttl, cIndex, mIndex) {
 			$('#footer').html('<span>TTL&nbsp;:&nbsp;' + ttl + '&nbsp;&nbsp;&nbsp;&nbsp;CreateRevision&nbsp;:&nbsp;' + cIndex + '&nbsp;&nbsp;&nbsp;&nbsp;ModRevision&nbsp;:&nbsp;' + mIndex + '</span><span id="showMode" style="position: absolute;right: 10px;color: #777;">' + aceMode + '</span>');
 		}
@@ -769,7 +769,7 @@
 				editor.navigateFileStart();
 			}
 		}
-		
+
 		function changeTreeMode() {
 		    if (version === '2') {
 		        treeMode = 'path';
@@ -784,7 +784,7 @@
                 connect();
 			}
 		}
-		
+
 		function changeModeBySuffix(path) {
 			var a = path.split(separator);
 			var tokens = a.slice(a.length-1,a.lenght)[0].split('.');
@@ -801,7 +801,7 @@
 				}
 			}
 		}
-		
+
 		function userOK() {
 			$('#userinfo').window('close');
 			connect();
