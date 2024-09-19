@@ -728,9 +728,9 @@ func get(w http.ResponseWriter, r *http.Request) {
 					if p[0] == "/" {
 						prefixKey = ""
 					}
-					resp, err = cli.Get(context.Background(), prefixKey, clientv3.WithPrefix())
+					resp, err = cli.Get(context.Background(), prefixKey, clientv3.WithPrefix(), clientv3.WithKeysOnly())
 				} else {
-					resp, err = cli.Get(context.Background(), p[0])
+					resp, err = cli.Get(context.Background(), p[0], clientv3.WithKeysOnly())
 				}
 				if err != nil {
 					data["errorCode"] = 500
@@ -852,9 +852,9 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 			//child
 			var resp *clientv3.GetResponse
 			if rangeEnd != "" {
-				resp, err = cli.Get(context.Background(), key, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+				resp, err = cli.Get(context.Background(), key, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend), clientv3.WithKeysOnly())
 			} else {
-				resp, err = cli.Get(context.Background(), key, clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+				resp, err = cli.Get(context.Background(), key, clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend), clientv3.WithKeysOnly())
 			}
 			if err != nil {
 				data["errorCode"] = 500

@@ -27,4 +27,4 @@ COPY assets assets
 
 EXPOSE ${PORT}
 
-ENTRYPOINT ["./etcdkeeper.bin", "-h", "$HOST", "-p", "$PORT"]
+CMD ./etcdkeeper.bin -h $HOST -p $PORT

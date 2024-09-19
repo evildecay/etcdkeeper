@@ -9,6 +9,7 @@ pkg
 bin
 release
 *.tmp
+.vscode
 
 # Architecture specific extensions/prefixes
 *.[568vq]
