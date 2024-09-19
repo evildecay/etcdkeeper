@@ -54,7 +54,8 @@ Usage of D:\Applications\etcdkeeper\etcdkeeper.exe:
 * Add import and export features.  **(delay)**
 
 ## Special Note
-Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
+* Because the etcdv3 version uses the new storage concept, without the catalog concept, the client uses the previous default "/" delimiter to view. See the documentation for etcdv3 [clientv3 doc](https://godoc.org/github.com/coreos/etcd/clientv3).
+* If the connected ETCD Server is v2 of 3.4 or above, you need to set the option `--enable-v2=true` when starting the ETCD Server.
 
 ## Compile source code and release
 * Run in Windows development environment: `build.bat`  `release.bat`

@@ -48,6 +48,7 @@ type userInfo struct {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	host := flag.String("h", "0.0.0.0", "host name or ip address")
 	port := flag.Int("p", 8080, "port")
 
@@ -253,21 +254,27 @@ func getV2(w http.ResponseWriter, r *http.Request) {
 	data := make(map[string]interface{})
 	log.Println("GET", "v2", key)
 
-	var cli client.Client
+	var (
+		cli client.Client
+		err error
+	)
 	sess := sessmgr.SessionStart(w, r)
 	v := sess.Get("uinfov2")
 	var uinfo *userInfo
 	if v != nil {
 		uinfo = v.(*userInfo)
-		cli, _ = newClientV2(uinfo)
+		cli, err = newClientV2(uinfo)
+		if err != nil {
+			io.WriteString(w, err.Error())
+			return
+		}
 		kapi := client.NewKeysAPI(cli)
 
 		var permissions [][]string
 		if r.FormValue("prefix") == "true" {
-			var e error
-			permissions, e = getPermissionPrefixV2(uinfo.host, uinfo.uname, key)
-			if e != nil {
-				io.WriteString(w, e.Error())
+			permissions, err = getPermissionPrefixV2(uinfo.host, uinfo.uname, key)
+			if err != nil {
+				io.WriteString(w, err.Error())
 				return
 			}
 		} else {
@@ -298,7 +305,7 @@ func getV2(w http.ResponseWriter, r *http.Request) {
 			}
 			if resp, err := kapi.Get(context.Background(), pKey, opt); err != nil {
 				data["errorCode"] = 500
-				data["message"] = err.Error()
+				data["message"] = fmt.Sprintf("get key %s error: %v", pKey, err)
 			} else {
 				if resp.Node == nil {
 					data["errorCode"] = 500
@@ -339,7 +346,6 @@ func getV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var dataByte []byte
-	var err error
 	if dataByte, err = json.Marshal(data); err != nil {
 		io.WriteString(w, err.Error())
 	} else {
@@ -474,7 +480,7 @@ func newClientV2(uinfo *userInfo) (client.Client, error) {
 
 	c, err := client.New(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new client error: %v", err)
 	}
 	return c, nil
 }
@@ -493,13 +499,13 @@ func getPermissionPrefixV2(host, uname, key string) ([][]string, error) {
 		rootUser := rootUsersV2[host]
 		rootCli, err := newClientV2(rootUser)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("new client error: %v", err)
 		}
 		rootUserKapi := client.NewAuthUserAPI(rootCli)
 		rootRoleKapi := client.NewAuthRoleAPI(rootCli)
 
 		if users, err := rootUserKapi.ListUsers(context.Background()); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list users error: %v", err)
 		} else {
 			// Find user permissions
 			set := make(map[string]string)
@@ -507,12 +513,12 @@ func getPermissionPrefixV2(host, uname, key string) ([][]string, error) {
 				if u == uname {
 					user, err := rootUserKapi.GetUser(context.Background(), u)
 					if err != nil {
-						return nil, err
+						return nil, fmt.Errorf("get user error: %v", err)
 					}
 					for _, r := range user.Roles {
 						role, err := rootRoleKapi.GetRole(context.Background(), r)
 						if err != nil {
-							return nil, err
+							return nil, fmt.Errorf("get user roles error: %v", err)
 						}
 						for _, ks := range role.Permissions.KV.Read {
 							var k string
@@ -558,17 +564,23 @@ func getInfoV2(host string) map[string]string {
 			log.Println(err)
 			return info
 		}
+		version := "unknow"
 		ver, err := rootClient.GetVersion(context.Background())
 		if err != nil {
-			log.Fatal(err)
+			log.Println("Get etcd version error:", err)
+		} else {
+			version = ver.Server
 		}
 		memberKapi := client.NewMembersAPI(rootClient)
+		name := "unknow"
 		member, err := memberKapi.Leader(context.Background())
 		if err != nil {
-			log.Fatal(err)
+			log.Println("Get etcd member error:", err)
+		} else {
+			name = member.Name
 		}
-		info["version"] = ver.Server
-		info["name"] = member.Name
+		info["version"] = version
+		info["name"] = name
 		info["size"] = "unknow" // FIXME: How get?
 	}
 	return info
