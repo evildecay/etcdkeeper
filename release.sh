@@ -8,25 +8,25 @@ if [ "ver" = "" ]; then
 fi
 
 # Windows amd64
-echo release etcdkeeper-v%ver%-windows_x86_64.zip
-tar -cf release\etcdkeeper-v%ver%-windows_x86_64.zip --strip-components 1 bin\etcdkeeper.exe
-tar -rf release\etcdkeeper-v%ver%-windows_x86_64.zip assets
-tar -rf release\etcdkeeper-v%ver%-windows_x86_64.zip LICENSE README.md
+echo release etcdkeeper-v%ver%-windows_x86_64.tar.gz
+copy bin/windows_amd64/etcdkeeper.exe etcdkeeper.exe
+tar -czf release/etcdkeeper-v%ver%-windows_x86_64.tar.gz etcdkeeper.exe assets LICENSE README.md
+rm -rf etcdkeeper.exe
 
 # Linux amd64
-echo release etcdkeeper-v%ver%-linux_x86_64.zip
-tar -cf release\etcdkeeper-v%ver%-linux_x86_64.zip --strip-components 2 bin\linux_amd64\etcdkeeper
-tar -rf release\etcdkeeper-v%ver%-linux_x86_64.zip assets
-tar -rf release\etcdkeeper-v%ver%-linux_x86_64.zip LICENSE README.md
+echo release etcdkeeper-v%ver%-linux_x86_64.tar.gz
+copy bin/etcdkeeper etcdkeeper
+tar -czf release/etcdkeeper-v%ver%-linux_x86_64.tar.gz etcdkeeper assets LICENSE README.md
+rm -rf etcdkeeper
 
 # Darwin amd64
-echo release etcdkeeper-v%ver%-darwin_x86_64.zip
-tar -cf release\etcdkeeper-v%ver%-darwin_x86_64.zip --strip-components 2 bin\darwin_amd64\etcdkeeper
-tar -rf release\etcdkeeper-v%ver%-darwin_x86_64.zip assets
-tar -rf release\etcdkeeper-v%ver%-darwin_x86_64.zip LICENSE README.md
+echo release etcdkeeper-v%ver%-darwin_x86_64.tar.gz
+copy bin/darwin_amd64/etcdkeeper etcdkeeper
+tar -czf release/etcdkeeper-v%ver%-darwin_x86_64.tar.gz etcdkeeper assets LICENSE README.md
+rm -rf etcdkeeper
 
 # Linux arm64
-echo release etcdkeeper-v%ver%-linux_arm64.zip
-tar -cf release\etcdkeeper-v%ver%-linux_arm64.zip --strip-components 2 bin\linux_arm64\etcdkeeper
-tar -rf release\etcdkeeper-v%ver%-linux_arm64.zip assets
-tar -rf release\etcdkeeper-v%ver%-linux_arm64.zip LICENSE README.md
+echo release etcdkeeper-v%ver%-linux_arm64.tar.gz
+copy bin/linux_arm64/etcdkeeper etcdkeeper
+tar -czf release/etcdkeeper-v%ver%-linux_arm64.tar.gz etcdkeeper assets LICENSE README.md
+rm -rf etcdkeeper
