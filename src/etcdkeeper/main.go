@@ -8,11 +8,9 @@ import (
 	_ "etcdkeeper/session/providers/memory"
 	"flag"
 	"fmt"
-	"github.com/coreos/etcd/pkg/transport"
-	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/client/v3"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,6 +19,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/client/v2"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
+
+	"golang.org/x/crypto/ssh"
 )
 
 var (
@@ -34,6 +39,7 @@ var (
 	useAuth        = flag.Bool("auth", false, "use auth")
 	connectTimeout = flag.Int("timeout", 5, "ETCD client connect timeout")
 	sendMsgSize    = flag.Int("sendMsgSize", 2*1024*1024, "ETCD client max send msg size")
+	sshProxy       = flag.String("ssh-proxy", "", "SSH proxy in username:password@host:port format")
 	rootUsers      = make(map[string]*userInfo) // host:rootUser
 	rootUsersV2    = make(map[string]*userInfo) // host:rootUser
 
@@ -1006,6 +1012,22 @@ func newClient(uinfo *userInfo) (*clientv3.Client, error) {
 		MaxCallSendMsgSize: *sendMsgSize,
 		//DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 	}
+
+	if *sshProxy != "" {
+		// log.Println("Using SSH proxy:", *sshProxy)
+
+		client, err := connectSSHProxy(*sshProxy)
+		if err != nil {
+			panic(err)
+		}
+		dialer := func(ctx context.Context, address string) (net.Conn, error) {
+			return client.Dial("tcp", address)
+		}
+		conf.DialOptions = []grpc.DialOption{
+			grpc.WithContextDialer(dialer),
+		}
+	}
+
 	if *useAuth {
 		conf.Username = uinfo.uname
 		conf.Password = uinfo.passwd
@@ -1118,4 +1140,35 @@ func getInfo(host string) map[string]string {
 
 func size(num int, unit int) (n, rem int) {
 	return num / unit, num - (num/unit)*unit
+}
+
+func connectSSHProxy(proxy string) (*ssh.Client, error) {
+	// parse format：username:password@host:port
+	atIdx := strings.LastIndex(proxy, "@")
+	if atIdx == -1 {
+		return nil, fmt.Errorf("invalid ssh-proxy format, missing '@'")
+	}
+	userPass := proxy[:atIdx]
+	hostPort := proxy[atIdx+1:]
+
+	colonIdx := strings.Index(userPass, ":")
+	if colonIdx == -1 {
+		return nil, fmt.Errorf("invalid ssh-proxy format, missing ':' in user:pass")
+	}
+	user := userPass[:colonIdx]
+	password := userPass[colonIdx+1:]
+
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         time.Second * time.Duration(*connectTimeout),
+	}
+	client, err := ssh.Dial("tcp", hostPort, config)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
