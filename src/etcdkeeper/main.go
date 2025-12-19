@@ -8,9 +8,6 @@ import (
 	_ "etcdkeeper/session/providers/memory"
 	"flag"
 	"fmt"
-	"github.com/coreos/etcd/pkg/transport"
-	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/client/v3"
 	"io"
 	"log"
 	"net/http"
@@ -21,6 +18,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/client/v3"
 )
 
 var (
@@ -53,6 +54,16 @@ func main() {
 	port := flag.Int("p", 8080, "port")
 
 	flag.CommandLine.Parse(os.Args[1:])
+
+	if v := os.Getenv("ETCD_KEEPER_AUTH"); v != "" {
+		parsed, err := strconv.ParseBool(v)
+		if err != nil {
+			log.Printf("invalid ETCD_KEEPER_AUTH value %q, expected true/false; fallback to -auth=%v", v, *useAuth)
+		} else {
+			*useAuth = parsed
+		}
+	}
+
 	separator = *sep
 
 	middleware := func(fns ...func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +81,7 @@ func main() {
 	http.HandleFunc("/v2/put", middleware(nothing, putV2))
 	http.HandleFunc("/v2/get", middleware(nothing, getV2))
 	http.HandleFunc("/v2/delete", middleware(nothing, delV2))
-	// dirctory mode
+	// directory mode
 	http.HandleFunc("/v2/getpath", middleware(nothing, getPathV2))
 
 	// v3
@@ -79,7 +90,7 @@ func main() {
 	http.HandleFunc("/v3/put", middleware(nothing, put))
 	http.HandleFunc("/v3/get", middleware(nothing, get))
 	http.HandleFunc("/v3/delete", middleware(nothing, del))
-	// dirctory mode
+	// directory mode
 	http.HandleFunc("/v3/getpath", middleware(nothing, getPath))
 
 	wd, err := os.Executable()

@@ -1,6 +1,6 @@
 module etcdkeeper
 
-go 1.20
+go 1.21
 
 require (
 	github.com/coreos/etcd v3.3.15+incompatible
